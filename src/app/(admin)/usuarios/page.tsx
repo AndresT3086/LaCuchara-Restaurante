@@ -7,7 +7,7 @@ import Dialog from "@/components/ui/Dialog";
 import Input from "@/components/ui/Input";
 import { Table, TableHead, TableBody, TableRow, Th, Td } from "@/components/ui/Table";
 import { useRole } from "@/contexts/RoleContext";
-import { redirect } from "next/navigation";
+import { AdminPage, Panel, StatCard } from "@/components/layout/AdminPage";
 
 type UserRole = "admin" | "user";
 type UserEstado = "activo" | "inactivo";
@@ -58,11 +58,6 @@ interface EditState {
 
 export default function UsuariosPage() {
   const { role } = useRole();
-
-  if (role !== "admin") {
-    redirect("/dashboard");
-  }
-
   const [usuarios, setUsuarios] = useState<Usuario[]>(MOCK_USUARIOS);
   const [showEdit, setShowEdit] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -76,6 +71,22 @@ export default function UsuariosPage() {
   const [invitando, setInvitando] = useState(false);
   const [inviteForm, setInviteForm] = useState({ nombre: "", email: "", rol: "user" as UserRole });
   const [inviteErrors, setInviteErrors] = useState<{ nombre?: string; email?: string }>({});
+
+  if (role !== "admin") {
+    return (
+      <AdminPage
+        eyebrow="Administración"
+        title="Usuarios"
+        description="Esta sección solo está disponible para administradores."
+      >
+        <Panel title="Acceso restringido">
+          <div className="p-6 text-sm text-cafe-2">
+            Cambia a la vista de administrador desde el selector del sidebar para gestionar usuarios.
+          </div>
+        </Panel>
+      </AdminPage>
+    );
+  }
 
   const openEdit = (usuario: Usuario) => {
     setEditState({ usuario, rol: usuario.rol, estado: usuario.estado });
@@ -126,22 +137,24 @@ export default function UsuariosPage() {
   };
 
   return (
-    <main className="min-h-screen bg-maiz px-6 py-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="font-heading font-bold text-cafe text-2xl">Usuarios</h1>
-          <p className="text-sm text-cafe/60 mt-1">
-            {usuarios.filter((u) => u.estado === "activo").length} usuarios activos
-          </p>
-        </div>
+    <AdminPage
+      eyebrow="Administración"
+      title="Usuarios"
+      description="Administra accesos internos para administradores y empleados de operación."
+      actions={
         <Button size="sm" onClick={() => setShowInvitar(true)}>
           Invitar usuario
         </Button>
+      }
+    >
+      <div className="grid gap-3 md:grid-cols-3">
+        <StatCard label="Activos" value={String(usuarios.filter((u) => u.estado === "activo").length)} detail="con acceso" tone="good" />
+        <StatCard label="Administradores" value={String(usuarios.filter((u) => u.rol === "admin").length)} detail="pueden configurar" tone="bad" />
+        <StatCard label="Empleados" value={String(usuarios.filter((u) => u.rol === "user").length)} detail="gestionan pedidos" />
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-xl border border-cafe/15 overflow-hidden">
+      <Panel title="Equipo interno" meta="Roles y último acceso">
         <Table>
           <TableHead>
             <TableRow>
@@ -156,15 +169,15 @@ export default function UsuariosPage() {
           <TableBody>
             {usuarios.map((usuario) => (
               <TableRow key={usuario.id}>
-                <Td className="font-medium">{usuario.nombre}</Td>
-                <Td className="text-cafe/70">{usuario.email}</Td>
+                <Td className="font-semibold">{usuario.nombre}</Td>
+                <Td className="text-cafe-2">{usuario.email}</Td>
                 <Td>
                   <RolBadge rol={usuario.rol} />
                 </Td>
                 <Td>
                   <EstadoBadge estado={usuario.estado} />
                 </Td>
-                <Td className="text-cafe/50 text-xs">{usuario.ultimoAcceso}</Td>
+                <Td className="text-cafe-3 text-xs">{usuario.ultimoAcceso}</Td>
                 <Td className="text-right">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(usuario)}>
                     Editar
@@ -174,7 +187,7 @@ export default function UsuariosPage() {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </Panel>
 
       {/* Dialog editar usuario */}
       <Dialog
@@ -188,8 +201,8 @@ export default function UsuariosPage() {
       >
         <div className="space-y-5">
           {editState.usuario && (
-            <div className="bg-cafe/5 rounded-lg px-4 py-3 text-sm">
-              <p className="text-cafe/50 text-xs mb-0.5">Email</p>
+            <div className="bg-maiz rounded-lg px-4 py-3 text-sm">
+              <p className="text-cafe-3 text-xs mb-0.5">Email</p>
               <p className="text-cafe font-medium">{editState.usuario.email}</p>
             </div>
           )}
@@ -207,7 +220,7 @@ export default function UsuariosPage() {
                     "flex-1 py-2 rounded-md text-sm font-medium font-body border transition-colors",
                     editState.rol === r
                       ? "bg-rojo-ladrillo text-maiz border-rojo-ladrillo"
-                      : "bg-transparent text-cafe/60 border-cafe/20 hover:border-cafe/40",
+                    : "bg-transparent text-cafe-2 border-maiz-3 hover:border-maiz-3 hover:bg-maiz",
                   ].join(" ")}
                 >
                   {rolLabel[r]}
@@ -231,7 +244,7 @@ export default function UsuariosPage() {
                       ? e === "activo"
                         ? "bg-hoja text-white border-hoja"
                         : "bg-cafe/40 text-white border-cafe/40"
-                      : "bg-transparent text-cafe/60 border-cafe/20 hover:border-cafe/40",
+                    : "bg-transparent text-cafe-2 border-maiz-3 hover:border-maiz-3 hover:bg-maiz",
                   ].join(" ")}
                 >
                   {e.charAt(0).toUpperCase() + e.slice(1)}
@@ -286,7 +299,7 @@ export default function UsuariosPage() {
                     "flex-1 py-2 rounded-md text-sm font-medium font-body border transition-colors",
                     inviteForm.rol === r
                       ? "bg-rojo-ladrillo text-maiz border-rojo-ladrillo"
-                      : "bg-transparent text-cafe/60 border-cafe/20 hover:border-cafe/40",
+                      : "bg-transparent text-cafe-2 border-maiz-3 hover:border-maiz-3 hover:bg-maiz",
                   ].join(" ")}
                 >
                   {rolLabel[r]}
@@ -296,6 +309,6 @@ export default function UsuariosPage() {
           </div>
         </div>
       </Dialog>
-    </main>
+    </AdminPage>
   );
 }

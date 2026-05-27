@@ -8,7 +8,7 @@ export default function AdminLayout({
 }) {
   return (
     <RoleProvider>
-      <div className="flex min-h-screen bg-maiz">
+      <div className="flex min-h-screen bg-elevated max-md:flex-col">
         <Sidebar />
         <div className="flex-1 overflow-auto">{children}</div>
       </div>

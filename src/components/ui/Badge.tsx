@@ -7,10 +7,10 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  good: "bg-hoja/15 text-hoja border border-hoja/30",
-  warn: "bg-platano/20 text-[#8a6300] border border-platano/40",
-  bad: "bg-aji/15 text-aji border border-aji/30",
-  neutral: "bg-cafe/10 text-cafe border border-cafe/20",
+  good: "bg-hoja-soft text-hoja",
+  warn: "bg-platano-soft text-[#8A6716]",
+  bad: "bg-aji-soft text-aji",
+  neutral: "bg-maiz-2 text-cafe-2",
 };
 
 export default function Badge({
@@ -22,7 +22,7 @@ export default function Badge({
   return (
     <span
       className={[
-        "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium font-body",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.04em] font-body before:h-1.5 before:w-1.5 before:rounded-full before:bg-current",
         variantClasses[variant],
         className,
       ].join(" ")}

@@ -7,6 +7,7 @@ import Dialog from "@/components/ui/Dialog";
 import Input from "@/components/ui/Input";
 import { Table, TableHead, TableBody, TableRow, Th, Td } from "@/components/ui/Table";
 import { useRole } from "@/contexts/RoleContext";
+import { AdminPage, FilterPill, Panel, StatCard } from "@/components/layout/AdminPage";
 
 type Unidad = "kg" | "g" | "L" | "ml" | "unid" | "porciones";
 
@@ -16,26 +17,35 @@ interface Ingrediente {
   stock: number;
   minimo: number;
   unidad: Unidad;
+  venceEnDias: number;
+  categoria: string;
   ultimaActualizacion: string;
 }
 
 const MOCK_INGREDIENTES: Ingrediente[] = [
-  { id: 1, nombre: "Pollo entero", stock: 4, minimo: 5, unidad: "kg", ultimaActualizacion: "Hoy 08:30" },
-  { id: 2, nombre: "Carne de res", stock: 1.5, minimo: 3, unidad: "kg", ultimaActualizacion: "Hoy 08:30" },
-  { id: 3, nombre: "Lentejas", stock: 12, minimo: 5, unidad: "kg", ultimaActualizacion: "Ayer" },
-  { id: 4, nombre: "Papa criolla", stock: 20, minimo: 8, unidad: "kg", ultimaActualizacion: "Ayer" },
-  { id: 5, nombre: "Maracuyá", stock: 3, minimo: 4, unidad: "kg", ultimaActualizacion: "Hoy 07:00" },
-  { id: 6, nombre: "Arroz", stock: 25, minimo: 10, unidad: "kg", ultimaActualizacion: "Lunes" },
-  { id: 7, nombre: "Leche", stock: 8, minimo: 5, unidad: "L", ultimaActualizacion: "Hoy 08:00" },
-  { id: 8, nombre: "Chorizo", stock: 0, minimo: 2, unidad: "kg", ultimaActualizacion: "Lunes" },
-  { id: 9, nombre: "Canela en rama", stock: 15, minimo: 3, unidad: "unid", ultimaActualizacion: "La semana pasada" },
-  { id: 10, nombre: "Aceite vegetal", stock: 6, minimo: 4, unidad: "L", ultimaActualizacion: "Ayer" },
+  { id: 1, nombre: "Pollo entero", stock: 4, minimo: 5, unidad: "kg", venceEnDias: 1, categoria: "Proteína", ultimaActualizacion: "Hoy 08:30" },
+  { id: 2, nombre: "Carne de res", stock: 1.5, minimo: 3, unidad: "kg", venceEnDias: 3, categoria: "Proteína", ultimaActualizacion: "Hoy 08:30" },
+  { id: 3, nombre: "Lentejas", stock: 12, minimo: 5, unidad: "kg", venceEnDias: 40, categoria: "Grano", ultimaActualizacion: "Ayer" },
+  { id: 4, nombre: "Papa criolla", stock: 20, minimo: 8, unidad: "kg", venceEnDias: 5, categoria: "Verdura", ultimaActualizacion: "Ayer" },
+  { id: 5, nombre: "Maracuyá", stock: 3, minimo: 4, unidad: "kg", venceEnDias: 2, categoria: "Fruta", ultimaActualizacion: "Hoy 07:00" },
+  { id: 6, nombre: "Arroz", stock: 25, minimo: 10, unidad: "kg", venceEnDias: 90, categoria: "Grano", ultimaActualizacion: "Lunes" },
+  { id: 7, nombre: "Leche", stock: 8, minimo: 5, unidad: "L", venceEnDias: 1, categoria: "Lácteo", ultimaActualizacion: "Hoy 08:00" },
+  { id: 8, nombre: "Chorizo", stock: 0, minimo: 2, unidad: "kg", venceEnDias: 0, categoria: "Proteína", ultimaActualizacion: "Lunes" },
+  { id: 9, nombre: "Canela en rama", stock: 15, minimo: 3, unidad: "unid", venceEnDias: 180, categoria: "Condimento", ultimaActualizacion: "La semana pasada" },
+  { id: 10, nombre: "Aceite vegetal", stock: 6, minimo: 4, unidad: "L", venceEnDias: 120, categoria: "Despensa", ultimaActualizacion: "Ayer" },
 ];
 
 function stockBadge(stock: number, minimo: number) {
   if (stock === 0) return <Badge variant="bad">Agotado</Badge>;
   if (stock < minimo) return <Badge variant="warn">Crítico</Badge>;
   return <Badge variant="good">OK</Badge>;
+}
+
+function vencimientoBadge(dias: number) {
+  if (dias <= 0) return <Badge variant="bad">Vence hoy</Badge>;
+  if (dias <= 2) return <Badge variant="bad">{dias} día{dias === 1 ? "" : "s"}</Badge>;
+  if (dias <= 5) return <Badge variant="warn">{dias} días</Badge>;
+  return <Badge variant="good">{dias} días</Badge>;
 }
 
 interface FormState {
@@ -98,6 +108,8 @@ export default function InventarioPage() {
       stock: Number(form.stock),
       minimo: Number(form.minimo),
       unidad: form.unidad,
+      venceEnDias: 14,
+      categoria: "Sin categoría",
       ultimaActualizacion: "Ahora",
     };
     setIngredientes((prev) => [nuevo, ...prev]);
@@ -131,23 +143,17 @@ export default function InventarioPage() {
   };
 
   const criticos = ingredientes.filter((i) => i.stock < i.minimo).length;
+  const agotados = ingredientes.filter((i) => i.stock === 0).length;
+  const porVencer = ingredientes.filter((i) => i.venceEnDias <= 2).length;
+  const saludables = ingredientes.filter((i) => i.stock >= i.minimo && i.venceEnDias > 5).length;
 
   return (
-    <main className="min-h-screen bg-maiz px-6 py-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="font-heading font-bold text-cafe text-2xl">Inventario</h1>
-          <p className="text-sm text-cafe/60 mt-1">
-            Ingredientes y stock actual
-            {criticos > 0 && (
-              <span className="ml-2 text-aji font-medium">
-                · {criticos} {criticos === 1 ? "ingrediente crítico" : "ingredientes críticos"}
-              </span>
-            )}
-          </p>
-        </div>
-        {role === "admin" && (
+    <AdminPage
+      eyebrow="Administración"
+      title="Inventario"
+      description="Stock, mínimos y vencimientos para decidir compras y sugerencias del menú."
+      actions={
+        role === "admin" ? (
           <Button
             size="sm"
             onClick={() => {
@@ -157,17 +163,51 @@ export default function InventarioPage() {
           >
             Agregar ingrediente
           </Button>
-        )}
+        ) : null
+      }
+      tabs={
+        <>
+          <FilterPill active count={ingredientes.length}>Todos</FilterPill>
+          <FilterPill count={criticos}>Críticos</FilterPill>
+          <FilterPill count={porVencer}>Por vencer</FilterPill>
+          <FilterPill count={agotados}>Agotados</FilterPill>
+        </>
+      }
+    >
+      {criticos > 0 && (
+        <div className="flex items-center gap-4 overflow-hidden rounded-lg border border-aji/25 border-l-4 border-l-aji bg-gradient-to-r from-aji/10 to-aji/5 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-aji text-maiz">
+            !
+          </div>
+          <div className="flex-1">
+            <p className="font-heading text-base font-bold text-cafe">
+              {criticos} ingredientes necesitan atención
+            </p>
+            <p className="text-sm text-cafe-2">
+              Pollo, res, maracuyá y chorizo pueden afectar el menú del día si no se ajustan.
+            </p>
+          </div>
+          <Button variant="danger" size="sm">Revisar compras</Button>
+        </div>
+      )}
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Ingredientes" value={String(ingredientes.length)} detail="registrados" />
+        <StatCard label="Críticos" value={String(criticos)} detail="bajo mínimo" tone="bad" />
+        <StatCard label="Por vencer" value={String(porVencer)} detail="en 48 horas" tone="warn" />
+        <StatCard label="Saludables" value={String(saludables)} detail="stock y fecha OK" tone="good" />
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-xl border border-cafe/15 overflow-hidden">
+      <Panel title="Ingredientes" meta="Ordenado por urgencia operativa">
         <Table>
           <TableHead>
             <TableRow>
               <Th>Ingrediente</Th>
+              <Th>Categoría</Th>
               <Th>Stock actual</Th>
               <Th>Mínimo</Th>
+              <Th>Vencimiento</Th>
               <Th>Estado</Th>
               <Th>Actualizado</Th>
               <Th className="text-right">Acciones</Th>
@@ -176,15 +216,17 @@ export default function InventarioPage() {
           <TableBody>
             {ingredientes.map((ing) => (
               <TableRow key={ing.id}>
-                <Td className="font-medium">{ing.nombre}</Td>
+                <Td className="font-semibold">{ing.nombre}</Td>
+                <Td className="text-cafe-2">{ing.categoria}</Td>
                 <Td>
                   {ing.stock} {ing.unidad}
                 </Td>
-                <Td className="text-cafe/50">
+                <Td className="text-cafe-3">
                   {ing.minimo} {ing.unidad}
                 </Td>
+                <Td>{vencimientoBadge(ing.venceEnDias)}</Td>
                 <Td>{stockBadge(ing.stock, ing.minimo)}</Td>
-                <Td className="text-cafe/50 text-xs">{ing.ultimaActualizacion}</Td>
+                <Td className="text-cafe-3 text-xs">{ing.ultimaActualizacion}</Td>
                 <Td className="text-right">
                   <Button
                     variant="ghost"
@@ -201,7 +243,7 @@ export default function InventarioPage() {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </Panel>
 
       {/* Dialog agregar ingrediente (solo admin) */}
       <Dialog
@@ -250,7 +292,7 @@ export default function InventarioPage() {
             <select
               value={form.unidad}
               onChange={(e) => setForm((p) => ({ ...p, unidad: e.target.value as Unidad }))}
-              className="w-full px-3 py-2 text-sm font-body text-cafe bg-white border border-cafe/20 rounded-md outline-none focus:border-rojo-ladrillo focus:ring-2 focus:ring-rojo-ladrillo/20 transition-colors"
+              className="w-full rounded-md border border-maiz-3 bg-maiz px-3 py-2 text-sm font-body text-cafe outline-none transition-all focus:border-rojo-ladrillo focus:bg-elevated focus:ring-2 focus:ring-rojo-ladrillo/15"
             >
               {(["kg", "g", "L", "ml", "unid", "porciones"] as Unidad[]).map((u) => (
                 <option key={u} value={u}>{u}</option>
@@ -322,6 +364,6 @@ export default function InventarioPage() {
           />
         </div>
       </Dialog>
-    </main>
+    </AdminPage>
   );
 }

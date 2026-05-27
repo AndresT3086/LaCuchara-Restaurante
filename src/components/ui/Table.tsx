@@ -6,7 +6,7 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
 
 export function Table({ children, className = "", ...props }: TableProps) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-cafe/15">
+    <div className="w-full overflow-x-auto">
       <table
         className={["w-full text-sm font-body border-collapse", className].join(" ")}
         {...props}
@@ -19,7 +19,7 @@ export function Table({ children, className = "", ...props }: TableProps) {
 
 export function TableHead({ children, className = "", ...props }: HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <thead className={["bg-cafe/5", className].join(" ")} {...props}>
+    <thead className={["bg-maiz", className].join(" ")} {...props}>
       {children}
     </thead>
   );
@@ -27,7 +27,7 @@ export function TableHead({ children, className = "", ...props }: HTMLAttributes
 
 export function TableBody({ children, className = "", ...props }: HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <tbody className={["divide-y divide-cafe/10", className].join(" ")} {...props}>
+    <tbody className={["divide-y divide-maiz-3", className].join(" ")} {...props}>
       {children}
     </tbody>
   );
@@ -36,7 +36,7 @@ export function TableBody({ children, className = "", ...props }: HTMLAttributes
 export function TableRow({ children, className = "", ...props }: HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
-      className={["hover:bg-cafe/5 transition-colors", className].join(" ")}
+      className={["hover:bg-maiz transition-colors", className].join(" ")}
       {...props}
     >
       {children}
@@ -48,7 +48,7 @@ export function Th({ children, className = "", ...props }: ThHTMLAttributes<HTML
   return (
     <th
       className={[
-        "px-4 py-3 text-left text-xs font-semibold text-cafe/60 uppercase tracking-wide font-heading",
+        "px-4 py-3 text-left text-[10px] font-bold text-cafe-3 uppercase tracking-[0.12em] font-body",
         className,
       ].join(" ")}
       {...props}
@@ -60,7 +60,7 @@ export function Th({ children, className = "", ...props }: ThHTMLAttributes<HTML
 
 export function Td({ children, className = "", ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={["px-4 py-3 text-cafe", className].join(" ")} {...props}>
+    <td className={["px-4 py-3.5 text-[13px] text-cafe", className].join(" ")} {...props}>
       {children}
     </td>
   );

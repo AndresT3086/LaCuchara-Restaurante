@@ -1,15 +1,23 @@
 import MenuDelDia from "./MenuDelDia";
 import PlatosEspeciales from "./PlatosEspeciales";
+import { AdminPage } from "@/components/layout/AdminPage";
+import Button from "@/components/ui/Button";
 
 export default function PlatosPage() {
   return (
-    <main className="min-h-screen bg-maiz px-6 py-8 space-y-8 max-w-5xl mx-auto">
-      <div>
-        <h1 className="font-heading font-bold text-cafe text-2xl">Platos y menú</h1>
-        <p className="text-sm text-cafe/60 mt-1">Gestiona el menú del día y los platos especiales</p>
-      </div>
+    <AdminPage
+      eyebrow="Administración"
+      title="Platos y menú"
+      description="Configura el corrientazo del día, sus variaciones de precio y los platos especiales."
+      actions={
+        <>
+          <Button variant="secondary" size="sm">Vista cliente</Button>
+          <Button size="sm">Publicar menú</Button>
+        </>
+      }
+    >
       <MenuDelDia />
       <PlatosEspeciales />
-    </main>
+    </AdminPage>
   );
 }
