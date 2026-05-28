@@ -44,7 +44,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-maiz text-cafe">
       <header className="sticky top-0 z-20 border-b border-maiz-3 bg-maiz/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-6 py-4 lg:gap-8">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6 lg:gap-8">
           <Link href="/" className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-achiote/25 bg-achiote/10 text-achiote">
               <svg width="25" height="25" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -61,21 +61,18 @@ export default function LandingPage() {
               </span>
             </span>
           </Link>
-          <nav className="hidden gap-6 text-sm font-medium text-cafe-2 md:flex">
+          <nav className="ml-4 hidden gap-6 text-sm font-medium text-cafe-2 md:flex">
             <a href="#menu" className="hover:text-rojo-ladrillo">Menú</a>
             <a href="#especiales" className="hover:text-rojo-ladrillo">Especiales</a>
             <a href="#pedido" className="hover:text-rojo-ladrillo">Pedido</a>
           </nav>
-          <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">
-            <Link href="/auth?mode=login" className="flex-1 rounded-md border border-maiz-3 bg-elevated px-3 py-2.5 text-center text-sm font-semibold text-cafe hover:bg-maiz-2 sm:flex-none sm:px-4">
-              Iniciar sesión
-            </Link>
-            <Link href="/auth?mode=register" className="flex-1 rounded-md border border-maiz-3 bg-maiz px-3 py-2.5 text-center text-sm font-semibold text-cafe-2 hover:bg-maiz-2 hover:text-cafe sm:flex-none lg:block">
-              Registrarse
+          <div className="ml-auto flex items-center gap-2">
+            <Link href="/auth?mode=login" className="rounded-md px-3 py-2 text-sm font-semibold text-cafe-2 hover:bg-maiz-2 hover:text-cafe">
+              Entrar
             </Link>
             <a
               href="#pedido"
-              className="hidden rounded-md bg-rojo-ladrillo px-4 py-2.5 text-sm font-semibold text-maiz shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-rojo-ladrillo-dark sm:block"
+              className="rounded-md bg-rojo-ladrillo px-4 py-2.5 text-sm font-semibold text-maiz shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-rojo-ladrillo-dark"
             >
               Pedir ahora
             </a>
