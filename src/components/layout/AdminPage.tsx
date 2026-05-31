@@ -1,4 +1,4 @@
-import Button from "@/components/ui/Button";
+import Link from "next/link";
 
 interface AdminPageProps {
   eyebrow: string;
@@ -26,13 +26,17 @@ export function AdminPage({
           <span className="font-semibold text-cafe">{title}</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <div className="hidden min-w-64 items-center gap-2 rounded-full border border-maiz-3 bg-maiz px-3 py-2 text-sm text-cafe-3 md:flex">
-            <span aria-hidden="true">⌕</span>
-            <span>Buscar pedidos, platos, ingredientes...</span>
-          </div>
-          <Button variant="secondary" size="sm" aria-label="Notificaciones">
-            <span aria-hidden="true">!</span>
-          </Button>
+          <Link
+            href="/auth?mode=login"
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-maiz-3 bg-elevated px-3 py-2 text-xs font-semibold text-cafe transition-all hover:bg-maiz-2 active:bg-maiz-3"
+          >
+            <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="M7 4L2 9l5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2.5 9H12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              <path d="M11 3h3.5A1.5 1.5 0 0116 4.5v9a1.5 1.5 0 01-1.5 1.5H11" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+            Cerrar sesión
+          </Link>
         </div>
       </div>
 
