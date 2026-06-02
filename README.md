@@ -6,9 +6,9 @@ Sistema web de administración para el restaurante **La Cuchara**, especializado
 
 | Nombre | Rol |
 |--------|-----|
-| [Nombre 1] | Backend |
-| [Nombre 2] | Frontend |
-| [Nombre 3] | Frontend / BD |
+| Darwin Andrés Tangarife Avendaño | Backend / Frontend / BD|
+| Yiyi Alejandra López Torres | Backend / Frontend / BD |
+| Maria Carolina Cardona Calderon | Backend / Frontend / BD |
 
 ## Usuarios de prueba
 
