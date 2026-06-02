@@ -1,0 +1,182 @@
+// Schema de Prisma para "La Cuchara" - Sistema de Gestión de Restaurante
+// Proyecto: Ingeniería Web - Next.js + Supabase
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Enum_Role {
+  ADMIN
+  USER
+}
+
+enum Enum_EstadoPedido {
+  PENDIENTE
+  EN_COCINA
+  LISTO
+  ENTREGADO
+  CANCELADO
+}
+
+enum Enum_TipoMovimiento {
+  ENTRADA
+  SALIDA
+}
+
+enum Enum_MetodoPago {
+  EFECTIVO
+  TARJETA_CREDITO
+  TARJETA_DEBITO
+  TRANSFERENCIA
+}
+
+// Usuario del sistema (empleados del restaurante)
+model User {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String    // Contraseña hasheada con bcrypt
+  image     String?
+  role      Enum_Role @default(USER)
+  deleted   Boolean   @default(false)
+  enabled   Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  maestrosCreados    Maestro[]    @relation("MaestroCreador")
+  movimientosHechos  Movimiento[] @relation("MovimientoResponsable")
+  pedidosAtendidos   Pedido[]     @relation("PedidoAtendidoPor")
+  platosCreados      Plato[]      @relation("CreadoPor")
+}
+
+// Categoría de platos del menú
+model Categoria {
+  id          String   @id @default(cuid())
+  nombre      String   @unique
+  descripcion String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  platos Plato[]
+}
+
+// Plato del menú (los ítems que se pueden pedir)
+model Plato {
+  id          String    @id @default(cuid())
+  nombre      String
+  descripcion String
+  precio      Float
+  disponible  Boolean   @default(true)
+  deleted     Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  categoriaId String
+  categoria   Categoria @relation(fields: [categoriaId], references: [id])
+
+  creadoPorId String
+  creadoPor   User      @relation("CreadoPor", fields: [creadoPorId], references: [id])
+
+  itemsPedido ItemPedido[]
+}
+
+// Maestro: insumo/ingrediente del inventario
+// Equivale al "Maestro" que pide el enunciado
+model Maestro {
+  id        String   @id @default(cuid())
+  nombre    String
+  unidad    String   // kg, litros, unidades, porciones, etc.
+  saldo     Float    @default(0)
+  deleted   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creadoPorId String
+  creadoPor   User   @relation("MaestroCreador", fields: [creadoPorId], references: [id])
+
+  movimientos Movimiento[]
+}
+
+// Movimiento de inventario: entrada o salida de un insumo
+model Movimiento {
+  id        String              @id @default(cuid())
+  tipo      Enum_TipoMovimiento
+  cantidad  Float
+  nota      String?
+  fecha     DateTime            @default(now())
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  maestroId     String
+  maestro       Maestro @relation(fields: [maestroId], references: [id])
+
+  responsableId String
+  responsable   User    @relation("MovimientoResponsable", fields: [responsableId], references: [id])
+}
+
+// Cliente del restaurante
+model Cliente {
+  id        String   @id @default(cuid())
+  nombre    String
+  telefono  String?
+  email     String?
+  deleted   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pedidos Pedido[]
+}
+
+// Pedido del restaurante
+model Pedido {
+  id        String            @id @default(cuid())
+  mesa      Int?
+  estado    Enum_EstadoPedido @default(PENDIENTE)
+  subtotal  Float
+  total     Float
+  nota      String?
+  deleted   Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  clienteId     String?
+  cliente       Cliente?  @relation(fields: [clienteId], references: [id])
+
+  atendidoPorId String?
+  atendidoPor   User?     @relation("PedidoAtendidoPor", fields: [atendidoPorId], references: [id])
+
+  items ItemPedido[]
+  pagos Pago[]
+}
+
+// Ítem dentro de un pedido
+model ItemPedido {
+  id        String   @id @default(cuid())
+  cantidad  Int
+  precio    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  platoId  String
+  plato    Plato  @relation(fields: [platoId], references: [id])
+
+  pedidoId String
+  pedido   Pedido @relation(fields: [pedidoId], references: [id])
+}
+
+// Pago de un pedido
+model Pago {
+  id        String          @id @default(cuid())
+  monto     Float
+  metodo    Enum_MetodoPago
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  pedidoId String
+  pedido   Pedido @relation(fields: [pedidoId], references: [id])
+}

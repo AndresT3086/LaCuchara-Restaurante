@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Mode = "login" | "register";
 
@@ -8,6 +12,41 @@ export default function AuthPage({
   searchParams?: { mode?: string };
 }) {
   const mode: Mode = searchParams?.mode === "register" ? "register" : "login";
+  const router = useRouter();
+
+  const [email, setEmail]       = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Error al iniciar sesión");
+        setLoading(false);
+        return;
+      }
+
+      // Login exitoso: redirigir al dashboard
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-maiz text-cafe">
@@ -25,9 +64,7 @@ export default function AuthPage({
               <span className="mt-1 block text-[9px] font-bold uppercase tracking-[0.2em] text-cafe-2">Acceso</span>
             </span>
           </Link>
-          <Link href="/" className="text-sm font-semibold text-cafe-2 hover:text-cafe">
-            Carta
-          </Link>
+          <Link href="/" className="text-sm font-semibold text-cafe-2 hover:text-cafe">Carta</Link>
         </div>
       </header>
 
@@ -67,56 +104,75 @@ export default function AuthPage({
             <p className="mt-1 text-sm text-cafe-2">
               {mode === "login"
                 ? "Usa el correo asociado a tu cuenta."
-                : "Crea una cuenta para pedir más rápido y guardar tus datos."}
+                : "Las cuentas se crean desde el panel de administración."}
             </p>
           </div>
 
           <div className="p-5 sm:p-6">
-            <form className="space-y-4">
-              {mode === "register" && (
+            {mode === "login" ? (
+              <form className="space-y-4" onSubmit={handleLogin}>
+                {/* Mensaje de error */}
+                {error && (
+                  <div className="rounded-lg border border-aji/30 bg-aji/10 px-4 py-3 text-sm font-medium text-aji">
+                    {error}
+                  </div>
+                )}
+
                 <label className="block">
-                  <span className="text-sm font-semibold text-cafe">Nombre</span>
-                  <input className="mt-1 w-full rounded-md border border-maiz-3 bg-maiz px-3 py-2.5 text-sm outline-none focus:border-rojo-ladrillo focus:ring-2 focus:ring-rojo-ladrillo/15" placeholder="Tu nombre" />
+                  <span className="text-sm font-semibold text-cafe">Correo</span>
+                  <input
+                    className="mt-1 w-full rounded-md border border-maiz-3 bg-maiz px-3 py-2.5 text-sm outline-none focus:border-rojo-ladrillo focus:ring-2 focus:ring-rojo-ladrillo/15"
+                    placeholder="correo@ejemplo.com"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
                 </label>
-              )}
-              <label className="block">
-                <span className="text-sm font-semibold text-cafe">Correo</span>
-                <input className="mt-1 w-full rounded-md border border-maiz-3 bg-maiz px-3 py-2.5 text-sm outline-none focus:border-rojo-ladrillo focus:ring-2 focus:ring-rojo-ladrillo/15" placeholder="correo@ejemplo.com" type="email" />
-              </label>
-              <label className="block">
-                <span className="text-sm font-semibold text-cafe">Contraseña</span>
-                <input className="mt-1 w-full rounded-md border border-maiz-3 bg-maiz px-3 py-2.5 text-sm outline-none focus:border-rojo-ladrillo focus:ring-2 focus:ring-rojo-ladrillo/15" placeholder="••••••••" type="password" />
-              </label>
 
-              {mode === "register" && (
-                <p className="rounded-lg border border-maiz-3 bg-maiz p-3 text-sm text-cafe-2">
-                  Las cuentas internas de empleados y administradores se crean desde el panel de usuarios.
-                </p>
-              )}
+                <label className="block">
+                  <span className="text-sm font-semibold text-cafe">Contraseña</span>
+                  <input
+                    className="mt-1 w-full rounded-md border border-maiz-3 bg-maiz px-3 py-2.5 text-sm outline-none focus:border-rojo-ladrillo focus:ring-2 focus:ring-rojo-ladrillo/15"
+                    placeholder="••••••••"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </label>
 
-              <Link
-                href={mode === "login" ? "/dashboard" : "/"}
-                className="flex w-full items-center justify-center rounded-md bg-rojo-ladrillo px-4 py-3 text-sm font-semibold text-maiz hover:bg-rojo-ladrillo-dark"
-              >
-                {mode === "login" ? "Entrar" : "Crear cuenta"}
-              </Link>
-
-              {mode === "login" ? (
-                <p className="text-center text-sm text-cafe-2">
-                  ¿No tienes cuenta?{" "}
-                  <Link className="font-semibold text-rojo-ladrillo" href="/auth?mode=register">
-                    Crear cuenta
-                  </Link>
-                </p>
-              ) : (
-                <p className="text-center text-sm text-cafe-2">
-                  ¿Ya tienes cuenta?{" "}
-                  <Link className="font-semibold text-rojo-ladrillo" href="/auth?mode=login">
-                    Entrar
-                  </Link>
-                </p>
-              )}
-            </form>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-rojo-ladrillo px-4 py-3 text-sm font-semibold text-maiz hover:bg-rojo-ladrillo-dark disabled:opacity-60"
+                >
+                  {loading ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-maiz/30 border-t-maiz" />
+                      Verificando...
+                    </>
+                  ) : (
+                    "Entrar"
+                  )}
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-maiz-3 bg-maiz p-4 text-sm text-cafe-2">
+                  <p className="font-semibold text-cafe mb-1">¿Eres empleado o administrador?</p>
+                  <p>Las cuentas internas se crean desde el panel de usuarios. Contacta a un administrador del sistema.</p>
+                </div>
+                <Link
+                  href="/auth?mode=login"
+                  className="flex w-full items-center justify-center rounded-md bg-rojo-ladrillo px-4 py-3 text-sm font-semibold text-maiz hover:bg-rojo-ladrillo-dark"
+                >
+                  Ir a iniciar sesión
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </section>

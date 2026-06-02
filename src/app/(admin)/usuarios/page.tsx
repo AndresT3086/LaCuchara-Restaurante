@@ -1,226 +1,222 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Dialog from "@/components/ui/Dialog";
-import Input from "@/components/ui/Input";
 import { Table, TableHead, TableBody, TableRow, Th, Td } from "@/components/ui/Table";
-import { useRole } from "@/contexts/RoleContext";
+import { useSession } from "@/contexts/SessionContext";
 import { AdminPage, Panel, StatCard } from "@/components/layout/AdminPage";
 
-type UserRole = "admin" | "user";
+type UserRole  = "ADMIN" | "USER";
 type UserEstado = "activo" | "inactivo";
 
 interface Usuario {
-  id: number;
-  nombre: string;
+  id: string;
+  name: string;
   email: string;
-  rol: UserRole;
-  estado: UserEstado;
-  ultimoAcceso: string;
+  role: UserRole;
+  enabled: boolean;
+  createdAt: string;
 }
 
-const MOCK_USUARIOS: Usuario[] = [
-  { id: 1, nombre: "Laura Martínez", email: "laura@lacuchara.co", rol: "admin", estado: "activo", ultimoAcceso: "Hoy 09:12" },
-  { id: 2, nombre: "Carlos Pérez", email: "carlos@lacuchara.co", rol: "user", estado: "activo", ultimoAcceso: "Hoy 08:45" },
-  { id: 3, nombre: "Ana Gómez", email: "ana@lacuchara.co", rol: "user", estado: "activo", ultimoAcceso: "Ayer 18:30" },
-  { id: 4, nombre: "Miguel Torres", email: "miguel@lacuchara.co", rol: "user", estado: "inactivo", ultimoAcceso: "Hace 5 días" },
-  { id: 5, nombre: "Sofía Ríos", email: "sofia@lacuchara.co", rol: "admin", estado: "activo", ultimoAcceso: "Hoy 07:55" },
-];
-
-const rolLabel: Record<UserRole, string> = {
-  admin: "Administrador",
-  user: "Empleado",
-};
+const rolLabel: Record<UserRole, string> = { ADMIN: "Administrador", USER: "Empleado" };
 
 function RolBadge({ rol }: { rol: UserRole }) {
-  return (
-    <Badge variant={rol === "admin" ? "bad" : "neutral"}>
-      {rolLabel[rol]}
-    </Badge>
-  );
+  return <Badge variant={rol === "ADMIN" ? "bad" : "neutral"}>{rolLabel[rol]}</Badge>;
 }
 
-function EstadoBadge({ estado }: { estado: UserEstado }) {
-  return (
-    <Badge variant={estado === "activo" ? "good" : "neutral"}>
-      {estado === "activo" ? "Activo" : "Inactivo"}
-    </Badge>
-  );
+function EstadoBadge({ enabled }: { enabled: boolean }) {
+  return <Badge variant={enabled ? "good" : "neutral"}>{enabled ? "Activo" : "Inactivo"}</Badge>;
 }
 
 interface EditState {
   usuario: Usuario | null;
   rol: UserRole;
-  estado: UserEstado;
+  enabled: boolean;
 }
 
 export default function UsuariosPage() {
-  const { role } = useRole();
-  const [usuarios, setUsuarios] = useState<Usuario[]>(MOCK_USUARIOS);
-  const [showEdit, setShowEdit] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editState, setEditState] = useState<EditState>({
-    usuario: null,
-    rol: "user",
-    estado: "activo",
-  });
+  const { user: sessionUser } = useSession();
+  const [usuarios, setUsuarios]   = useState<Usuario[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [error, setError]         = useState("");
+  const [showEdit, setShowEdit]   = useState(false);
+  const [saving, setSaving]       = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [editState, setEditState] = useState<EditState>({ usuario: null, rol: "USER", enabled: true });
 
-  const [showInvitar, setShowInvitar] = useState(false);
-  const [invitando, setInvitando] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ nombre: "", email: "", rol: "user" as UserRole });
-  const [inviteErrors, setInviteErrors] = useState<{ nombre?: string; email?: string }>({});
+  // Cargar usuarios desde el backend
+  const cargarUsuarios = useCallback(async () => {
+    setLoadingData(true);
+    setError("");
+    try {
+      const res = await fetch("/api/users");
+      if (!res.ok) throw new Error("Error al cargar usuarios");
+      const data = await res.json();
+      setUsuarios(data.users);
+    } catch {
+      setError("No se pudieron cargar los usuarios");
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
 
-  if (role !== "admin") {
+  useEffect(() => {
+    cargarUsuarios();
+  }, [cargarUsuarios]);
+
+  // Solo ADMIN puede ver esta página
+  if (sessionUser && sessionUser.role !== "ADMIN") {
     return (
-      <AdminPage
-        eyebrow="Administración"
-        title="Usuarios"
-        description="Esta sección solo está disponible para administradores."
-      >
+      <AdminPage eyebrow="Administración" title="Usuarios" description="Esta sección solo está disponible para administradores.">
         <Panel title="Acceso restringido">
-          <div className="p-6 text-sm text-cafe-2">
-            Cambia a la vista de administrador desde el selector del sidebar para gestionar usuarios.
-          </div>
+          <div className="p-6 text-sm text-cafe-2">No tienes permiso para ver esta página.</div>
         </Panel>
       </AdminPage>
     );
   }
 
   const openEdit = (usuario: Usuario) => {
-    setEditState({ usuario, rol: usuario.rol, estado: usuario.estado });
+    setSaveError("");
+    setEditState({ usuario, rol: usuario.role, enabled: usuario.enabled });
     setShowEdit(true);
   };
 
-  const handleGuardarEdicion = async () => {
+  const handleGuardar = async () => {
     if (!editState.usuario) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setUsuarios((prev) =>
-      prev.map((u) =>
-        u.id === editState.usuario!.id
-          ? { ...u, rol: editState.rol, estado: editState.estado }
-          : u
-      )
-    );
-    setSaving(false);
-    setShowEdit(false);
+    setSaveError("");
+    try {
+      const res = await fetch("/api/user", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id:      editState.usuario.id,
+          role:    editState.rol,
+          enabled: editState.enabled,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setSaveError(d.error || "Error al guardar");
+        return;
+      }
+      // Actualizar la tabla localmente sin recargar todo
+      setUsuarios((prev) =>
+        prev.map((u) =>
+          u.id === editState.usuario!.id
+            ? { ...u, role: editState.rol, enabled: editState.enabled }
+            : u
+        )
+      );
+      setShowEdit(false);
+    } catch {
+      setSaveError("Error de conexión");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const validateInvite = (): boolean => {
-    const errs: { nombre?: string; email?: string } = {};
-    if (!inviteForm.nombre.trim()) errs.nombre = "El nombre es obligatorio";
-    if (!inviteForm.email.trim() || !inviteForm.email.includes("@"))
-      errs.email = "Ingresa un email válido";
-    setInviteErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleInvitar = async () => {
-    if (!validateInvite()) return;
-    setInvitando(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    const nuevo: Usuario = {
-      id: Date.now(),
-      nombre: inviteForm.nombre.trim(),
-      email: inviteForm.email.trim(),
-      rol: inviteForm.rol,
-      estado: "activo",
-      ultimoAcceso: "Nunca",
-    };
-    setUsuarios((prev) => [nuevo, ...prev]);
-    setInvitando(false);
-    setShowInvitar(false);
-    setInviteForm({ nombre: "", email: "", rol: "user" });
-    setInviteErrors({});
-  };
+  const formatFecha = (iso: string) =>
+    new Date(iso).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
     <AdminPage
       eyebrow="Administración"
       title="Usuarios"
       description="Administra accesos internos para administradores y empleados de operación."
-      actions={
-        <Button size="sm" onClick={() => setShowInvitar(true)}>
-          Invitar usuario
-        </Button>
-      }
     >
+      {/* Tarjetas de resumen */}
       <div className="grid gap-3 md:grid-cols-3">
-        <StatCard label="Activos" value={String(usuarios.filter((u) => u.estado === "activo").length)} detail="con acceso" tone="good" />
-        <StatCard label="Administradores" value={String(usuarios.filter((u) => u.rol === "admin").length)} detail="pueden configurar" tone="bad" />
-        <StatCard label="Empleados" value={String(usuarios.filter((u) => u.rol === "user").length)} detail="gestionan pedidos" />
+        <StatCard label="Activos"         value={String(usuarios.filter((u) => u.enabled).length)}            detail="con acceso"           tone="good" />
+        <StatCard label="Administradores" value={String(usuarios.filter((u) => u.role === "ADMIN").length)}   detail="pueden configurar"    tone="bad"  />
+        <StatCard label="Empleados"       value={String(usuarios.filter((u) => u.role === "USER").length)}    detail="gestionan pedidos"              />
       </div>
 
+      {/* Error de carga */}
+      {error && (
+        <div className="rounded-lg border border-aji/30 bg-aji/10 px-4 py-3 text-sm text-aji">{error}</div>
+      )}
+
       {/* Tabla */}
-      <Panel title="Equipo interno" meta="Roles y último acceso">
-        <Table>
-          <TableHead>
-            <TableRow>
-              <Th>Nombre</Th>
-              <Th>Email</Th>
-              <Th>Rol</Th>
-              <Th>Estado</Th>
-              <Th>Último acceso</Th>
-              <Th className="text-right">Acciones</Th>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {usuarios.map((usuario) => (
-              <TableRow key={usuario.id}>
-                <Td className="font-semibold">{usuario.nombre}</Td>
-                <Td className="text-cafe-2">{usuario.email}</Td>
-                <Td>
-                  <RolBadge rol={usuario.rol} />
-                </Td>
-                <Td>
-                  <EstadoBadge estado={usuario.estado} />
-                </Td>
-                <Td className="text-cafe-3 text-xs">{usuario.ultimoAcceso}</Td>
-                <Td className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => openEdit(usuario)}>
-                    Editar
-                  </Button>
-                </Td>
+      <Panel title="Equipo interno" meta="Roles y fecha de creación">
+        {loadingData ? (
+          <div className="flex items-center justify-center py-12 text-sm text-cafe-3">Cargando usuarios…</div>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <Th>Nombre</Th>
+                <Th>Email</Th>
+                <Th>Rol</Th>
+                <Th>Estado</Th>
+                <Th>Creado</Th>
+                <Th className="text-right">Acciones</Th>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {usuarios.map((usuario) => (
+                <TableRow key={usuario.id}>
+                  <Td className="font-semibold">{usuario.name}</Td>
+                  <Td className="text-cafe-2">{usuario.email}</Td>
+                  <Td><RolBadge rol={usuario.role} /></Td>
+                  <Td><EstadoBadge enabled={usuario.enabled} /></Td>
+                  <Td className="text-cafe-3 text-xs">{formatFecha(usuario.createdAt)}</Td>
+                  <Td className="text-right">
+                    {/* No dejar editar el propio usuario para evitar quitarse el ADMIN */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEdit(usuario)}
+                      disabled={usuario.id === sessionUser?.id}
+                    >
+                      {usuario.id === sessionUser?.id ? "Tú" : "Editar"}
+                    </Button>
+                  </Td>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </Panel>
 
       {/* Dialog editar usuario */}
       <Dialog
         open={showEdit}
         onClose={() => { if (!saving) setShowEdit(false); }}
-        title={`Editar — ${editState.usuario?.nombre ?? ""}`}
+        title={`Editar — ${editState.usuario?.name ?? ""}`}
         confirmLabel="Guardar cambios"
         cancelLabel="Cancelar"
-        onConfirm={handleGuardarEdicion}
+        onConfirm={handleGuardar}
         loading={saving}
       >
         <div className="space-y-5">
           {editState.usuario && (
-            <div className="bg-maiz rounded-lg px-4 py-3 text-sm">
+            <div className="rounded-lg bg-maiz px-4 py-3 text-sm">
               <p className="text-cafe-3 text-xs mb-0.5">Email</p>
-              <p className="text-cafe font-medium">{editState.usuario.email}</p>
+              <p className="font-medium text-cafe">{editState.usuario.email}</p>
             </div>
           )}
 
-          {/* Rol */}
+          {saveError && (
+            <div className="rounded-lg border border-aji/30 bg-aji/10 px-3 py-2 text-sm text-aji">{saveError}</div>
+          )}
+
+          {/* Selector de rol */}
           <div className="flex flex-col gap-1.5">
-            <p className="text-sm font-medium text-cafe font-body">Rol</p>
+            <p className="text-sm font-medium text-cafe">Rol</p>
             <div className="flex gap-2">
-              {(["admin", "user"] as UserRole[]).map((r) => (
+              {(["ADMIN", "USER"] as UserRole[]).map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setEditState((p) => ({ ...p, rol: r }))}
                   className={[
-                    "flex-1 py-2 rounded-md text-sm font-medium font-body border transition-colors",
+                    "flex-1 py-2 rounded-md text-sm font-medium border transition-colors",
                     editState.rol === r
                       ? "bg-rojo-ladrillo text-maiz border-rojo-ladrillo"
-                    : "bg-transparent text-cafe-2 border-maiz-3 hover:border-maiz-3 hover:bg-maiz",
+                      : "bg-transparent text-cafe-2 border-maiz-3 hover:bg-maiz",
                   ].join(" ")}
                 >
                   {rolLabel[r]}
@@ -229,80 +225,23 @@ export default function UsuariosPage() {
             </div>
           </div>
 
-          {/* Estado */}
+          {/* Selector de estado */}
           <div className="flex flex-col gap-1.5">
-            <p className="text-sm font-medium text-cafe font-body">Estado</p>
+            <p className="text-sm font-medium text-cafe">Estado</p>
             <div className="flex gap-2">
-              {(["activo", "inactivo"] as UserEstado[]).map((e) => (
+              {([true, false] as const).map((e) => (
                 <button
-                  key={e}
+                  key={String(e)}
                   type="button"
-                  onClick={() => setEditState((p) => ({ ...p, estado: e }))}
+                  onClick={() => setEditState((p) => ({ ...p, enabled: e }))}
                   className={[
-                    "flex-1 py-2 rounded-md text-sm font-medium font-body border transition-colors capitalize",
-                    editState.estado === e
-                      ? e === "activo"
-                        ? "bg-hoja text-white border-hoja"
-                        : "bg-cafe/40 text-white border-cafe/40"
-                    : "bg-transparent text-cafe-2 border-maiz-3 hover:border-maiz-3 hover:bg-maiz",
+                    "flex-1 py-2 rounded-md text-sm font-medium border transition-colors",
+                    editState.enabled === e
+                      ? e ? "bg-hoja text-white border-hoja" : "bg-cafe/40 text-white border-cafe/40"
+                      : "bg-transparent text-cafe-2 border-maiz-3 hover:bg-maiz",
                   ].join(" ")}
                 >
-                  {e.charAt(0).toUpperCase() + e.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </Dialog>
-
-      {/* Dialog invitar usuario */}
-      <Dialog
-        open={showInvitar}
-        onClose={() => {
-          if (!invitando) {
-            setShowInvitar(false);
-            setInviteForm({ nombre: "", email: "", rol: "user" });
-            setInviteErrors({});
-          }
-        }}
-        title="Invitar usuario"
-        confirmLabel="Crear usuario"
-        cancelLabel="Cancelar"
-        onConfirm={handleInvitar}
-        loading={invitando}
-      >
-        <div className="space-y-4">
-          <Input
-            label="Nombre completo"
-            placeholder="Ej. Ana Gómez"
-            value={inviteForm.nombre}
-            onChange={(e) => setInviteForm((p) => ({ ...p, nombre: e.target.value }))}
-            error={inviteErrors.nombre}
-          />
-          <Input
-            label="Email"
-            type="email"
-            placeholder="usuario@lacuchara.co"
-            value={inviteForm.email}
-            onChange={(e) => setInviteForm((p) => ({ ...p, email: e.target.value }))}
-            error={inviteErrors.email}
-          />
-          <div className="flex flex-col gap-1.5">
-            <p className="text-sm font-medium text-cafe font-body">Rol</p>
-            <div className="flex gap-2">
-              {(["admin", "user"] as UserRole[]).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setInviteForm((p) => ({ ...p, rol: r }))}
-                  className={[
-                    "flex-1 py-2 rounded-md text-sm font-medium font-body border transition-colors",
-                    inviteForm.rol === r
-                      ? "bg-rojo-ladrillo text-maiz border-rojo-ladrillo"
-                      : "bg-transparent text-cafe-2 border-maiz-3 hover:border-maiz-3 hover:bg-maiz",
-                  ].join(" ")}
-                >
-                  {rolLabel[r]}
+                  {e ? "Activo" : "Inactivo"}
                 </button>
               ))}
             </div>

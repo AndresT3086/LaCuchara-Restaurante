@@ -1,36 +1,126 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# La Cuchara — Sistema de Gestión de Restaurante
 
-## Getting Started
+Sistema web de administración para el restaurante **La Cuchara**, especializado en comida típica colombiana. Desarrollado con Next.js 14, React, TailwindCSS y Supabase.
 
-First, run the development server:
+## Integrantes del Equipo
 
+| Nombre | Rol |
+|--------|-----|
+| [Nombre 1] | Backend |
+| [Nombre 2] | Frontend |
+| [Nombre 3] | Frontend / BD |
+
+## Usuarios de prueba
+
+| Correo | Contraseña | Rol |
+|--------|-----------|-----|
+| admin@lacuchara.co | Admin2026* | ADMIN |
+| mesero@lacuchara.co | User2026* | USER |
+
+---
+
+## Instalación paso a paso
+
+### Requisitos previos
+- Node.js v18 o superior (`node -v`)
+- Cuenta en [Supabase](https://supabase.com) (gratis)
+
+### 1. Clonar el repositorio
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/TU_ORG/nombreEquipo-Restaurante.git
+cd nombreEquipo-Restaurante
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Instalar dependencias
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Configurar variables de entorno
+```bash
+cp .env.example .env
+```
+Edita `.env` y pega el string de conexión de Supabase:
+```
+DATABASE_URL="postgresql://postgres:[PASSWORD]@db.xxxx.supabase.co:5432/postgres"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Crear las tablas en Supabase
+```bash
+npx prisma migrate dev --name lacuchara-inicial
+```
 
-## Learn More
+### 5. Crear usuarios y datos iniciales
+Con el servidor corriendo (`npm run dev`), ejecuta en otra terminal:
+```bash
+curl -X POST http://localhost:3000/api/seed
+```
+O abre `http://localhost:3000/api/seed` y haz un POST desde Postman/ThunderClient.
 
-To learn more about Next.js, take a look at the following resources:
+### 6. Arrancar
+```bash
+npm run dev
+```
+Abre [http://localhost:3000](http://localhost:3000)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estructura del proyecto
 
-## Deploy on Vercel
+```
+src/
+├── app/
+│   ├── page.tsx                     # Landing page pública
+│   ├── auth/page.tsx                # Login / registro
+│   ├── (admin)/                     # Páginas protegidas (requieren sesión)
+│   │   ├── layout.tsx               # Layout con sidebar
+│   │   ├── dashboard/page.tsx
+│   │   ├── pedidos/page.tsx
+│   │   ├── platos/page.tsx
+│   │   ├── inventario/page.tsx      # Página de Maestros/Transacciones
+│   │   ├── usuarios/page.tsx
+│   │   └── reportes/page.tsx
+│   └── api/                         # Backend — API Routes
+│       ├── auth/login/route.ts      # POST: iniciar sesión
+│       ├── auth/logout/route.ts     # POST: cerrar sesión
+│       ├── auth/me/route.ts         # GET: usuario activo
+│       ├── user/route.ts            # POST/PUT: crear/editar usuario
+│       ├── users/route.ts           # GET: listar usuarios
+│       ├── maestros/route.ts        # GET/POST: maestros de inventario
+│       ├── movimientos/route.ts     # GET/POST: transacciones
+│       ├── platos/route.ts          # CRUD platos del menú
+│       ├── categorias/route.ts      # GET/POST categorías
+│       ├── pedidos/route.ts         # GET/POST/PUT pedidos
+│       └── seed/route.ts            # POST: datos iniciales (solo desarrollo)
+├── lib/
+│   ├── prisma.ts                    # Cliente Prisma (singleton)
+│   └── auth.ts                      # Utilidad: leer sesión de la cookie
+└── ...componentes y contextos del front
+prisma/
+└── schema.prisma                    # Esquema de la base de datos
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## API Endpoints
+
+| Método | Endpoint | Descripción | Roles |
+|--------|----------|-------------|-------|
+| POST | `/api/auth/login` | Iniciar sesión | Público |
+| POST | `/api/auth/logout` | Cerrar sesión | Autenticado |
+| GET | `/api/auth/me` | Usuario activo | Autenticado |
+| GET | `/api/users` | Listar usuarios | ADMIN |
+| POST/PUT | `/api/user` | Crear/editar usuario | ADMIN |
+| GET/POST | `/api/maestros` | Maestros (GET: todos, POST: solo ADMIN) | Auth |
+| GET/POST | `/api/movimientos` | Transacciones de inventario | Auth |
+| GET/POST/PUT/DELETE | `/api/platos` | Menú | Auth |
+| GET/POST | `/api/categorias` | Categorías del menú | Auth |
+| GET/POST/PUT | `/api/pedidos` | Pedidos | Auth |
+
+---
+
+## Despliegue en Vercel
+
+1. Conecta el repo en [vercel.com](https://vercel.com)
+2. En **Settings → Environment Variables** agrega `DATABASE_URL` con el string de Supabase de producción
+3. El nombre del proyecto en Vercel debe ser `nombreEquipoRestaurante` para que la URL quede `nombreEquipoRestaurante.vercel.app`
