@@ -34,6 +34,10 @@ const navItems: NavItem[] = [
     icon: <svg {...iconProps}><rect x="2" y="2" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.6" /><rect x="10" y="2" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.6" /><rect x="2" y="10" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.6" /><rect x="10" y="10" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.6" /></svg>,
   },
   {
+    href: "/transacciones", label: "Transacciones", section: "administracion",
+    icon: <svg {...iconProps}><path d="M3 5h10M10 2l3 3-3 3M15 13H5M8 10l-3 3 3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+  },
+  {
     href: "/usuarios", label: "Usuarios", section: "administracion", soloAdmin: true,
     icon: <svg {...iconProps}><circle cx="9" cy="6" r="3" stroke="currentColor" strokeWidth="1.6" /><path d="M2 16c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>,
   },
