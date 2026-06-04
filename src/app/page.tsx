@@ -15,20 +15,20 @@ const MENU_HOY = {
   },
 };
 
-const MESA_COMPARTIDA = [
+const PASOS_PEDIDO = [
   {
-    titulo: "Mesa compartida",
-    detalle: "El mesero puede ubicar a clientes distintos en una misma mesa cuando el almorzadero está lleno.",
+    titulo: "Escoge tu almuerzo",
+    detalle: "Elige el combo del día, decide si quieres sopa o postre y selecciona el seco que más se te antoje.",
     inicial: "1",
   },
   {
-    titulo: "Pedidos separados",
-    detalle: "Cada persona conserva su propio seco, jugo, adicionales, forma de pago y observaciones.",
+    titulo: "Recoger o domicilio",
+    detalle: "Pide para recoger en sitio o solicita domicilio. Si eliges domicilio, calculamos el costo según la distancia.",
     inicial: "2",
   },
   {
-    titulo: "Cuenta dividida",
-    detalle: "Aunque compartan mesa, el sistema mantiene cuentas independientes para cobrar sin confusiones.",
+    titulo: "Paga como prefieras",
+    detalle: "Puedes pagar contra entrega o usar tarjeta en línea cuando el pedido esté listo para confirmarse.",
     inicial: "3",
   },
 ];
@@ -60,19 +60,19 @@ export default function LandingPage() {
           </Link>
           <nav className="ml-4 hidden gap-6 text-sm font-medium text-cafe-2 md:flex">
             <a href="#menu" className="hover:text-rojo-ladrillo">Menú</a>
-            <a href="#mesa" className="hover:text-rojo-ladrillo">Mesa compartida</a>
+            <a href="#como-pedir" className="hover:text-rojo-ladrillo">Cómo pedir</a>
             <a href="#pedido" className="hover:text-rojo-ladrillo">Pedido</a>
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/auth?mode=login" className="rounded-md px-3 py-2 text-sm font-semibold text-cafe-2 hover:bg-maiz-2 hover:text-cafe">
               Entrar
             </Link>
-            <a
-              href="#pedido"
+            <Link
+              href="/pedido"
               className="rounded-md bg-rojo-ladrillo px-4 py-2.5 text-sm font-semibold text-maiz shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-rojo-ladrillo-dark"
             >
               Pedir ahora
-            </a>
+            </Link>
           </div>
         </div>
       </header>
@@ -81,25 +81,25 @@ export default function LandingPage() {
         <section className="mx-auto grid max-w-6xl gap-10 px-6 py-14 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:py-20">
           <div>
             <p className="mb-5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-achiote-dark before:h-0.5 before:w-6 before:bg-achiote">
-              Almorzadero · mesas compartidas · cuentas separadas
+              Cocina oculta · recoger y domicilio
             </p>
             <h1 className="font-heading text-5xl font-extrabold leading-[0.98] text-cafe sm:text-6xl">
-              Almuerzos corrientes sin enredos en la mesa.
+              Corrientazo casero, listo para pedir.
             </h1>
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-cafe-2">
-              Menú del día para el servicio de mediodía. Si dos personas que no se conocen comparten mesa, cada una conserva su pedido, su pago y su cuenta por separado.
+              Mira el menú del día, escoge tu seco y pide para recoger o a domicilio. Para confirmar tu pedido solo necesitas iniciar sesión o crear tu cuenta.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#menu" className="rounded-md bg-rojo-ladrillo px-5 py-3 text-sm font-semibold text-maiz hover:bg-rojo-ladrillo-dark">
                 Ver menú de hoy
               </a>
-              <a href="#mesa" className="rounded-md border border-maiz-3 bg-elevated px-5 py-3 text-sm font-semibold text-cafe hover:bg-maiz-2">
-                Cómo se divide la mesa
-              </a>
+              <Link href="/pedido" className="rounded-md border border-maiz-3 bg-elevated px-5 py-3 text-sm font-semibold text-cafe hover:bg-maiz-2">
+                Hacer pedido
+              </Link>
             </div>
             <div className="mt-9 flex flex-wrap gap-8 border-t border-dashed border-maiz-3 pt-6">
               <HeroMeta label="Estado" value="Abierto hoy" dot />
-              <HeroMeta label="Servicio" value="11:30 a.m." />
+              <HeroMeta label="Tiempo" value="25-35 min" />
               <HeroMeta label="Desde" value={formatCOP(MENU_HOY.precios.basico)} />
             </div>
           </div>
@@ -118,15 +118,15 @@ export default function LandingPage() {
               Menú activo hoy
             </div>
             <div className="absolute bottom-7 left-7 max-w-[250px] rounded-2xl border border-maiz/20 bg-maiz/95 p-4 text-cafe shadow-[0_18px_30px_-16px_rgba(58,36,24,0.65)]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-achiote-dark">Mesa 4</p>
-              <p className="mt-1 font-heading text-xl font-extrabold">Dos clientes, dos cuentas</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-achiote-dark">Pedido de hoy</p>
+              <p className="mt-1 font-heading text-xl font-extrabold">Completo o a tu gusto</p>
               <div className="mt-4 grid gap-2 text-xs font-semibold">
                 <div className="flex items-center justify-between rounded-lg bg-elevated px-3 py-2">
-                  <span>Puesto A · Completo</span>
+                  <span>Completo</span>
                   <span>{formatCOP(MENU_HOY.precios.completo)}</span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-elevated px-3 py-2">
-                  <span>Puesto B · Básico</span>
+                  <span>Básico</span>
                   <span>{formatCOP(MENU_HOY.precios.basico)}</span>
                 </div>
               </div>
@@ -142,12 +142,12 @@ export default function LandingPage() {
           <SectionHead
             eyebrow="Menú del día"
             title="Almuerzo corriente de hoy"
-            subtitle="Escoge el seco y arma el almuerzo que vas a consumir en mesa, para recoger o a domicilio."
+            subtitle="Escoge el seco y arma tu almuerzo para recoger en sitio o recibir a domicilio."
           />
           <div className="grid overflow-hidden rounded-3xl border border-maiz-3 bg-elevated shadow-warm-md lg:grid-cols-[1.05fr_0.95fr]">
             <div className="p-8 lg:p-10">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-achiote-dark">{MENU_HOY.fecha}</p>
-              <h3 className="mb-7 font-heading text-3xl font-extrabold text-cafe">Servicio del almorzadero</h3>
+              <h3 className="mb-7 font-heading text-3xl font-extrabold text-cafe">Servicio del mediodía</h3>
               <Course number="1" title="Sopa" desc={MENU_HOY.sopa} />
               <Course number="2" title="Seco · escoge uno" desc={MENU_HOY.acompanantes}>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -175,25 +175,25 @@ export default function LandingPage() {
                 <Combo name="Sin sopa" desc="Seco · Jugo · Postre" price={MENU_HOY.precios.sinSopa} />
                 <Combo name="Sin postre" desc="Sopa · Seco · Jugo" price={MENU_HOY.precios.sinPostre} />
                 <Combo name="Básico" desc="Seco · Jugo" price={MENU_HOY.precios.basico} />
-                <button className="mt-8 w-full rounded-md bg-achiote px-5 py-3 font-semibold text-cafe hover:bg-achiote/90">
+                <Link href="/pedido" className="mt-8 flex w-full items-center justify-center rounded-md bg-achiote px-5 py-3 font-semibold text-cafe hover:bg-achiote/90">
                   Armar pedido
-                </button>
+                </Link>
                 <p className="mt-3 text-center text-xs text-maiz/60">
-                  Puedes asociarlo a una mesa y dividir la cuenta por persona.
+                  Para confirmar el pedido debes iniciar sesión o crear tu cuenta.
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="mesa" className="mx-auto max-w-6xl px-6 pb-20">
+        <section id="como-pedir" className="mx-auto max-w-6xl px-6 pb-20">
           <SectionHead
-            eyebrow="Innovación del servicio"
-            title="Mesa compartida, cuenta dividida"
-            subtitle="Pensado para almorzaderos donde se aprovechan las mesas disponibles sin mezclar consumos de personas distintas."
+            eyebrow="Cómo pedir"
+            title="Tu corrientazo en pocos pasos"
+            subtitle="Un flujo sencillo para clientes: eliges el almuerzo, confirmas entrega y pagas según prefieras."
           />
           <div className="grid gap-4 md:grid-cols-3">
-            {MESA_COMPARTIDA.map((item, index) => (
+            {PASOS_PEDIDO.map((item, index) => (
               <article key={item.titulo} className="overflow-hidden rounded-2xl border border-maiz-3 bg-elevated shadow-warm-sm">
                 <div
                   className={[
@@ -229,31 +229,31 @@ export default function LandingPage() {
               </div>
             </div>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-maiz/65">
-              Almorzadero colombiano para atender el mediodía, compartir mesas y separar cuentas sin confusiones.
+              Cocina oculta colombiana con menú del día, pedidos para recoger, domicilios y pagos en línea.
             </p>
           </div>
 
           <FooterGroup title="Carta">
             <a href="#menu">Menú del día</a>
-            <a href="#mesa">Mesa compartida</a>
+            <a href="#como-pedir">Cómo pedir</a>
             <a href="#pedido">Armar pedido</a>
           </FooterGroup>
 
           <FooterGroup title="Acceso">
-            <Link href="/auth?mode=login&role=cliente">Cliente</Link>
-            <Link href="/auth?mode=login&role=empleado">Empleado</Link>
-            <Link href="/auth?mode=login&role=admin">Administrador</Link>
+            <Link href="/auth?mode=login">Iniciar sesión</Link>
+            <a href="#menu">Ver menú</a>
+            <a href="#pedido">Combos</a>
           </FooterGroup>
 
           <div>
             <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-achiote">Servicio</h3>
             <p className="text-sm text-maiz/65">Lunes a sábado</p>
             <p className="mt-1 font-heading text-lg font-bold">11:30 a.m. - 3:30 p.m.</p>
-            <p className="mt-3 text-sm text-maiz/65">Consumo en mesa, recoger y domicilio.</p>
+            <p className="mt-3 text-sm text-maiz/65">Pedidos para recoger y domicilio.</p>
           </div>
         </div>
         <div className="border-t border-maiz/10 px-6 py-4 text-center text-xs text-maiz/45">
-          La Cuchara · Sistema académico para almorzadero colombiano
+          La Cuchara · Corrientazo colombiano para recoger o domicilio
         </div>
       </footer>
     </div>

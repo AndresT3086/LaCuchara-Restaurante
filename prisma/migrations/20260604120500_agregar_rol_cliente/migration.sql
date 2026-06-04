@@ -1,0 +1,1 @@
+ALTER TYPE "Enum_Role" ADD VALUE 'CLIENTE';

@@ -13,6 +13,7 @@ datasource db {
 enum Enum_Role {
   ADMIN
   USER
+  CLIENTE
 }
 
 enum Enum_EstadoPedido {
