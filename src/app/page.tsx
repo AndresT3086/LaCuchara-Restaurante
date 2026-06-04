@@ -15,24 +15,21 @@ const MENU_HOY = {
   },
 };
 
-const ESPECIALES = [
+const MESA_COMPARTIDA = [
   {
-    nombre: "Bandeja paisa",
-    detalle: "Fríjoles, chicharrón, carne molida, chorizo, arroz, huevo y aguacate",
-    precio: 28000,
-    inicial: "B",
+    titulo: "Mesa compartida",
+    detalle: "El mesero puede ubicar a clientes distintos en una misma mesa cuando el almorzadero está lleno.",
+    inicial: "1",
   },
   {
-    nombre: "Trucha al ajillo",
-    detalle: "Trucha dorada, patacón, ensalada fresca y arroz con coco",
-    precio: 32000,
-    inicial: "T",
+    titulo: "Pedidos separados",
+    detalle: "Cada persona conserva su propio seco, jugo, adicionales, forma de pago y observaciones.",
+    inicial: "2",
   },
   {
-    nombre: "Posta negra",
-    detalle: "Salsa negra cartagenera, arroz con coco y tajadas maduras",
-    precio: 26000,
-    inicial: "P",
+    titulo: "Cuenta dividida",
+    detalle: "Aunque compartan mesa, el sistema mantiene cuentas independientes para cobrar sin confusiones.",
+    inicial: "3",
   },
 ];
 
@@ -63,7 +60,7 @@ export default function LandingPage() {
           </Link>
           <nav className="ml-4 hidden gap-6 text-sm font-medium text-cafe-2 md:flex">
             <a href="#menu" className="hover:text-rojo-ladrillo">Menú</a>
-            <a href="#especiales" className="hover:text-rojo-ladrillo">Especiales</a>
+            <a href="#mesa" className="hover:text-rojo-ladrillo">Mesa compartida</a>
             <a href="#pedido" className="hover:text-rojo-ladrillo">Pedido</a>
           </nav>
           <div className="ml-auto flex items-center gap-2">
@@ -84,25 +81,25 @@ export default function LandingPage() {
         <section className="mx-auto grid max-w-6xl gap-10 px-6 py-14 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:py-20">
           <div>
             <p className="mb-5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-achiote-dark before:h-0.5 before:w-6 before:bg-achiote">
-              Cocina oculta · domicilio y recoger
+              Almorzadero · mesas compartidas · cuentas separadas
             </p>
             <h1 className="font-heading text-5xl font-extrabold leading-[0.98] text-cafe sm:text-6xl">
-              Corrientazo casero, servido como en casa.
+              Almuerzos corrientes sin enredos en la mesa.
             </h1>
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-cafe-2">
-              Menú del día con sopa, seco a elección, jugo y postre. Puedes pedir para recoger o a domicilio.
+              Menú del día para el servicio de mediodía. Si dos personas que no se conocen comparten mesa, cada una conserva su pedido, su pago y su cuenta por separado.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#menu" className="rounded-md bg-rojo-ladrillo px-5 py-3 text-sm font-semibold text-maiz hover:bg-rojo-ladrillo-dark">
                 Ver menú de hoy
               </a>
-              <a href="#especiales" className="rounded-md border border-maiz-3 bg-elevated px-5 py-3 text-sm font-semibold text-cafe hover:bg-maiz-2">
-                Platos especiales
+              <a href="#mesa" className="rounded-md border border-maiz-3 bg-elevated px-5 py-3 text-sm font-semibold text-cafe hover:bg-maiz-2">
+                Cómo se divide la mesa
               </a>
             </div>
             <div className="mt-9 flex flex-wrap gap-8 border-t border-dashed border-maiz-3 pt-6">
               <HeroMeta label="Estado" value="Abierto hoy" dot />
-              <HeroMeta label="Tiempo" value="25-35 min" />
+              <HeroMeta label="Servicio" value="11:30 a.m." />
               <HeroMeta label="Desde" value={formatCOP(MENU_HOY.precios.basico)} />
             </div>
           </div>
@@ -120,6 +117,20 @@ export default function LandingPage() {
               <span className="h-2 w-2 rounded-full bg-hoja" />
               Menú activo hoy
             </div>
+            <div className="absolute bottom-7 left-7 max-w-[250px] rounded-2xl border border-maiz/20 bg-maiz/95 p-4 text-cafe shadow-[0_18px_30px_-16px_rgba(58,36,24,0.65)]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-achiote-dark">Mesa 4</p>
+              <p className="mt-1 font-heading text-xl font-extrabold">Dos clientes, dos cuentas</p>
+              <div className="mt-4 grid gap-2 text-xs font-semibold">
+                <div className="flex items-center justify-between rounded-lg bg-elevated px-3 py-2">
+                  <span>Puesto A · Completo</span>
+                  <span>{formatCOP(MENU_HOY.precios.completo)}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-elevated px-3 py-2">
+                  <span>Puesto B · Básico</span>
+                  <span>{formatCOP(MENU_HOY.precios.basico)}</span>
+                </div>
+              </div>
+            </div>
             <div className="absolute -right-4 bottom-16 rotate-[-3deg] rounded-l rounded-r-xl bg-cafe px-7 py-4 text-maiz shadow-[0_12px_24px_-6px_rgba(58,36,24,0.5)]">
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-maiz/70">Completo</p>
               <p className="font-heading text-3xl font-extrabold text-achiote">{formatCOP(MENU_HOY.precios.completo)}</p>
@@ -130,13 +141,13 @@ export default function LandingPage() {
         <section id="menu" className="mx-auto max-w-6xl px-6 py-16">
           <SectionHead
             eyebrow="Menú del día"
-            title="El corrientazo de hoy"
-            subtitle="Escoge tu seco y ajusta el combo según tengas antojo de sopa o postre."
+            title="Almuerzo corriente de hoy"
+            subtitle="Escoge el seco y arma el almuerzo que vas a consumir en mesa, para recoger o a domicilio."
           />
           <div className="grid overflow-hidden rounded-3xl border border-maiz-3 bg-elevated shadow-warm-md lg:grid-cols-[1.05fr_0.95fr]">
             <div className="p-8 lg:p-10">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-achiote-dark">{MENU_HOY.fecha}</p>
-              <h3 className="mb-7 font-heading text-3xl font-extrabold text-cafe">Servicio del mediodía</h3>
+              <h3 className="mb-7 font-heading text-3xl font-extrabold text-cafe">Servicio del almorzadero</h3>
               <Course number="1" title="Sopa" desc={MENU_HOY.sopa} />
               <Course number="2" title="Seco · escoge uno" desc={MENU_HOY.acompanantes}>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -168,36 +179,33 @@ export default function LandingPage() {
                   Armar pedido
                 </button>
                 <p className="mt-3 text-center text-xs text-maiz/60">
-                  Domicilio calculado según kilómetros o pago contra entrega.
+                  Puedes asociarlo a una mesa y dividir la cuenta por persona.
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="especiales" className="mx-auto max-w-6xl px-6 pb-20">
+        <section id="mesa" className="mx-auto max-w-6xl px-6 pb-20">
           <SectionHead
-            eyebrow="Especiales"
-            title="Para salirte del corrientazo"
-            subtitle="Platos de precio individual, con unidades limitadas para hoy."
+            eyebrow="Innovación del servicio"
+            title="Mesa compartida, cuenta dividida"
+            subtitle="Pensado para almorzaderos donde se aprovechan las mesas disponibles sin mezclar consumos de personas distintas."
           />
           <div className="grid gap-4 md:grid-cols-3">
-            {ESPECIALES.map((plato, index) => (
-              <article key={plato.nombre} className="overflow-hidden rounded-2xl border border-maiz-3 bg-elevated shadow-warm-sm">
+            {MESA_COMPARTIDA.map((item, index) => (
+              <article key={item.titulo} className="overflow-hidden rounded-2xl border border-maiz-3 bg-elevated shadow-warm-sm">
                 <div
                   className={[
                     "flex h-36 items-center justify-center bg-gradient-to-br font-heading text-5xl font-extrabold text-maiz",
                     index === 0 ? "from-achiote to-rojo-ladrillo" : index === 1 ? "from-platano to-achiote-dark" : "from-cafe-3 to-cafe",
                   ].join(" ")}
                 >
-                  {plato.inicial}
+                  {item.inicial}
                 </div>
                 <div className="p-5">
-                  <div className="mb-2 flex items-start justify-between gap-4">
-                    <h3 className="font-heading text-xl font-extrabold text-cafe">{plato.nombre}</h3>
-                    <p className="font-heading text-lg font-extrabold text-rojo-ladrillo">{formatCOP(plato.precio)}</p>
-                  </div>
-                  <p className="text-sm leading-relaxed text-cafe-2">{plato.detalle}</p>
+                  <h3 className="mb-2 font-heading text-xl font-extrabold text-cafe">{item.titulo}</h3>
+                  <p className="text-sm leading-relaxed text-cafe-2">{item.detalle}</p>
                 </div>
               </article>
             ))}
@@ -221,13 +229,13 @@ export default function LandingPage() {
               </div>
             </div>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-maiz/65">
-              Cocina oculta colombiana con pedidos para recoger, domicilio y pagos en línea.
+              Almorzadero colombiano para atender el mediodía, compartir mesas y separar cuentas sin confusiones.
             </p>
           </div>
 
           <FooterGroup title="Carta">
             <a href="#menu">Menú del día</a>
-            <a href="#especiales">Platos especiales</a>
+            <a href="#mesa">Mesa compartida</a>
             <a href="#pedido">Armar pedido</a>
           </FooterGroup>
 
@@ -241,11 +249,11 @@ export default function LandingPage() {
             <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-achiote">Servicio</h3>
             <p className="text-sm text-maiz/65">Lunes a sábado</p>
             <p className="mt-1 font-heading text-lg font-bold">11:30 a.m. - 3:30 p.m.</p>
-            <p className="mt-3 text-sm text-maiz/65">Domicilios calculados por kilómetros.</p>
+            <p className="mt-3 text-sm text-maiz/65">Consumo en mesa, recoger y domicilio.</p>
           </div>
         </div>
         <div className="border-t border-maiz/10 px-6 py-4 text-center text-xs text-maiz/45">
-          La Cuchara · Sistema académico de administración para corrientazo colombiano
+          La Cuchara · Sistema académico para almorzadero colombiano
         </div>
       </footer>
     </div>
