@@ -138,21 +138,22 @@ model Cliente {
 // Pedido del restaurante
 model Pedido {
   id             String            @id @default(cuid())
-  mesa           Int?
   estado         Enum_EstadoPedido @default(PENDIENTE)
   subtotal       Float
   total          Float
+  costoEnvio     Float             @default(0)
+  distanciaKm    Float             @default(0)
   nota           String?
-  observaciones  String?  @db.VarChar(200)   // Máx 200 caracteres
+  observaciones  String?           @db.VarChar(200)
   deleted        Boolean           @default(false)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  clienteId     String?
-  cliente       Cliente?  @relation(fields: [clienteId], references: [id])
+  clienteId     String            // Ahora obligatorio
+  cliente       Cliente           @relation(fields: [clienteId], references: [id])
 
   atendidoPorId String?
-  atendidoPor   User?     @relation("PedidoAtendidoPor", fields: [atendidoPorId], references: [id])
+  atendidoPor   User?             @relation("PedidoAtendidoPor", fields: [atendidoPorId], references: [id])
 
   items ItemPedido[]
   pagos Pago[]
