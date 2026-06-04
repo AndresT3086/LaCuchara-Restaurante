@@ -122,28 +122,31 @@ model Movimiento {
 
 // Cliente del restaurante
 model Cliente {
-  id        String   @id @default(cuid())
-  nombre    String
-  telefono  String?
-  email     String?
-  deleted   Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  nombre           String
+  telefono         String?
+  email            String?
+  direccion        String?           // Dirección de domicilio
+  puntoReferencia  String?  @db.VarChar(100)  // Máx 100 caracteres
+  deleted          Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   pedidos Pedido[]
 }
 
 // Pedido del restaurante
 model Pedido {
-  id        String            @id @default(cuid())
-  mesa      Int?
-  estado    Enum_EstadoPedido @default(PENDIENTE)
-  subtotal  Float
-  total     Float
-  nota      String?
-  deleted   Boolean           @default(false)
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  id             String            @id @default(cuid())
+  mesa           Int?
+  estado         Enum_EstadoPedido @default(PENDIENTE)
+  subtotal       Float
+  total          Float
+  nota           String?
+  observaciones  String?  @db.VarChar(200)   // Máx 200 caracteres
+  deleted        Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   clienteId     String?
   cliente       Cliente?  @relation(fields: [clienteId], references: [id])
