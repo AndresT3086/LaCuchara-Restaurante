@@ -1,132 +1,115 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminPage, FilterPill, Panel, StatCard } from "@/components/layout/AdminPage";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import { Table, TableBody, TableHead, TableRow, Td, Th } from "@/components/ui/Table";
 
-type Estado = "Pendiente" | "En preparación" | "Listo" | "Entregado";
-type Entrega = "Mesa" | "Recoger" | "Domicilio";
-type Pago = "Contra entrega" | "Stripe";
+type Estado = "PENDIENTE" | "EN_COCINA" | "LISTO" | "ENTREGADO" | "CANCELADO";
 
 interface Pedido {
   id: string;
-  hora: string;
-  cliente: string;
-  telefono: string;
-  detalle: string;
-  entrega: Entrega;
-  mesa?: number;
-  puesto?: string;
-  distancia?: string;
-  pago: Pago;
-  total: number;
   estado: Estado;
+  subtotal: number;
+  total: number;
+  costoEnvio: number;
+  distanciaKm: number;
+  createdAt: string;
+  cliente: { nombre: string; telefono?: string | null; direccion?: string | null } | null;
+  items: Array<{
+    cantidad: number;
+    plato: { nombre: string; precio: number };
+  }>;
+  pagos: Array<{ metodo: string; monto: number }>;
 }
 
-const PEDIDOS_INICIALES: Pedido[] = [
-  {
-    id: "LC-1048",
-    hora: "12:08",
-    cliente: "Diana Rojas",
-    telefono: "300 456 9012",
-    detalle: "Completo con pollo, sin postre",
-    entrega: "Mesa",
-    mesa: 4,
-    puesto: "A",
-    pago: "Stripe",
-    total: 20500,
-    estado: "Pendiente",
-  },
-  {
-    id: "LC-1047",
-    hora: "12:02",
-    cliente: "Andrés Mora",
-    telefono: "311 223 4545",
-    detalle: "Básico con res, jugo de maracuyá",
-    entrega: "Mesa",
-    mesa: 4,
-    puesto: "B",
-    pago: "Contra entrega",
-    total: 12000,
-    estado: "En preparación",
-  },
-  {
-    id: "LC-1046",
-    hora: "11:55",
-    cliente: "Paola Gil",
-    telefono: "315 889 1200",
-    detalle: "Bandeja paisa, sopa adicional",
-    entrega: "Domicilio",
-    distancia: "4.1 km",
-    pago: "Stripe",
-    total: 33800,
-    estado: "Listo",
-  },
-  {
-    id: "LC-1045",
-    hora: "11:49",
-    cliente: "Mateo Ruiz",
-    telefono: "302 777 0191",
-    detalle: "Completo con cerdo",
-    entrega: "Mesa",
-    mesa: 2,
-    puesto: "A",
-    pago: "Contra entrega",
-    total: 18000,
-    estado: "Entregado",
-  },
-];
-
-const estadoOrden: Estado[] = ["Pendiente", "En preparación", "Listo", "Entregado"];
+const estadoOrden: Estado[] = ["PENDIENTE", "EN_COCINA", "LISTO", "ENTREGADO"];
+const estadoLabels: Record<Estado, string> = {
+  PENDIENTE: "Pendiente",
+  EN_COCINA: "En cocina",
+  LISTO: "Listo",
+  ENTREGADO: "Entregado",
+  CANCELADO: "Cancelado",
+};
 
 function formatCOP(value: number) {
   return `$${new Intl.NumberFormat("es-CO").format(value)}`;
 }
 
+function formatHora(iso: string) {
+  return new Date(iso).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+}
+
 function estadoBadge(estado: Estado) {
-  const variant = estado === "Pendiente" ? "warn" : estado === "En preparación" ? "neutral" : estado === "Listo" ? "good" : "neutral";
-  return <Badge variant={variant}>{estado}</Badge>;
+  const variant = estado === "PENDIENTE" ? "warn" : estado === "CANCELADO" ? "bad" : estado === "LISTO" || estado === "ENTREGADO" ? "good" : "neutral";
+  return <Badge variant={variant}>{estadoLabels[estado]}</Badge>;
+}
+
+function detallePedido(pedido: Pedido) {
+  return pedido.items.map((item) => `${item.cantidad}x ${item.plato.nombre}`).join(" · ") || "Sin items";
 }
 
 export default function PedidosPage() {
-  const [pedidos, setPedidos] = useState(PEDIDOS_INICIALES);
-  const [filtro, setFiltro] = useState<Estado | "Todos">("Todos");
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [filtro, setFiltro] = useState<Estado | "TODOS">("TODOS");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const cargarPedidos = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/pedidos");
+      if (!res.ok) throw new Error();
+
+      const data = await res.json();
+      setPedidos(data.pedidos ?? []);
+    } catch {
+      setError("No se pudieron cargar los pedidos.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarPedidos();
+  }, []);
 
   const pedidosFiltrados = useMemo(
-    () => pedidos.filter((pedido) => filtro === "Todos" || pedido.estado === filtro),
+    () => pedidos.filter((pedido) => filtro === "TODOS" || pedido.estado === filtro),
     [filtro, pedidos]
   );
 
-  const mesasCompartidas = useMemo(() => {
-    const conteo = pedidos.reduce<Record<number, number>>((acc, pedido) => {
-      if (!pedido.mesa) return acc;
-      acc[pedido.mesa] = (acc[pedido.mesa] ?? 0) + 1;
-      return acc;
-    }, {});
+  const avanzarEstado = async (id: string, estadoActual: Estado) => {
+    const index = estadoOrden.indexOf(estadoActual);
+    const siguiente = estadoOrden[Math.min(index + 1, estadoOrden.length - 1)];
 
-    return Object.values(conteo).filter((cantidad) => cantidad > 1).length;
-  }, [pedidos]);
+    if (siguiente === estadoActual) return;
 
-  const avanzarEstado = (id: string) => {
-    setPedidos((prev) =>
-      prev.map((pedido) => {
-        if (pedido.id !== id) return pedido;
-        const index = estadoOrden.indexOf(pedido.estado);
-        return { ...pedido, estado: estadoOrden[Math.min(index + 1, estadoOrden.length - 1)] };
-      })
-    );
+    try {
+      const res = await fetch("/api/pedidos", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, estado: siguiente }),
+      });
+
+      if (!res.ok) throw new Error();
+      await cargarPedidos();
+    } catch {
+      setError("No se pudo actualizar el estado del pedido.");
+    }
   };
 
   return (
     <AdminPage
       eyebrow="Operación"
       title="Pedidos"
-      description="Gestiona pedidos por mesa, puesto y cuenta separada para el servicio de almorzadero."
+      description="Gestiona pedidos reales creados en el sistema."
       tabs={
         <>
-          <FilterPill active={filtro === "Todos"} count={pedidos.length} onClick={() => setFiltro("Todos")}>Todos</FilterPill>
+          <FilterPill active={filtro === "TODOS"} count={pedidos.length} onClick={() => setFiltro("TODOS")}>Todos</FilterPill>
           {estadoOrden.map((estado) => (
             <FilterPill
               key={estado}
@@ -134,82 +117,80 @@ export default function PedidosPage() {
               count={pedidos.filter((p) => p.estado === estado).length}
               onClick={() => setFiltro(estado)}
             >
-              {estado}
+              {estadoLabels[estado]}
             </FilterPill>
           ))}
         </>
       }
     >
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Pendientes" value={String(pedidos.filter((p) => p.estado === "Pendiente").length)} detail="por confirmar" tone="warn" />
-        <StatCard label="En cocina" value={String(pedidos.filter((p) => p.estado === "En preparación").length)} detail="preparándose" tone="blue" />
-        <StatCard label="Listos" value={String(pedidos.filter((p) => p.estado === "Listo").length)} detail="para entrega" tone="good" />
-        <StatCard label="Mesas compartidas" value={String(mesasCompartidas)} detail="con cuentas separadas" />
+        <StatCard label="Pendientes" value={String(pedidos.filter((p) => p.estado === "PENDIENTE").length)} detail="por confirmar" tone="warn" />
+        <StatCard label="En cocina" value={String(pedidos.filter((p) => p.estado === "EN_COCINA").length)} detail="preparándose" tone="blue" />
+        <StatCard label="Listos" value={String(pedidos.filter((p) => p.estado === "LISTO").length)} detail="para entrega" tone="good" />
+        <StatCard label="Domicilios" value={String(pedidos.filter((p) => p.costoEnvio > 0).length)} detail="con envío calculado" />
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-aji/30 bg-aji/10 px-4 py-3 text-sm text-aji">{error}</div>
+      )}
+
       <Panel title="Cola de pedidos" meta={`${pedidosFiltrados.length} visibles`}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <Th>Pedido</Th>
-              <Th>Cliente</Th>
-              <Th>Mesa</Th>
-              <Th>Detalle</Th>
-              <Th>Entrega</Th>
-              <Th>Pago</Th>
-              <Th>Total</Th>
-              <Th>Estado</Th>
-              <Th className="text-right">Acción</Th>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {pedidosFiltrados.map((pedido) => (
-              <TableRow key={pedido.id}>
-                <Td>
-                  <p className="font-heading text-sm font-bold text-cafe">{pedido.id}</p>
-                  <p className="text-xs text-cafe-3">{pedido.hora}</p>
-                </Td>
-                <Td>
-                  <p className="font-semibold text-cafe">{pedido.cliente}</p>
-                  <p className="text-xs text-cafe-3">{pedido.telefono}</p>
-                </Td>
-                <Td>
-                  {pedido.mesa ? (
-                    <div>
-                      <Badge variant="neutral">
-                        Mesa {pedido.mesa}
-                      </Badge>
-                      <p className="mt-1 text-xs text-cafe-3">
-                        Puesto {pedido.puesto} · cuenta separada
-                      </p>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-cafe-3">Sin mesa</span>
-                  )}
-                </Td>
-                <Td className="max-w-56 text-cafe-2">{pedido.detalle}</Td>
-                <Td>
-                  <Badge variant={pedido.entrega === "Domicilio" ? "neutral" : "good"}>
-                    {pedido.entrega}{pedido.distancia ? ` · ${pedido.distancia}` : ""}
-                  </Badge>
-                </Td>
-                <Td className="text-cafe-2">{pedido.pago}</Td>
-                <Td className="font-heading font-bold">{formatCOP(pedido.total)}</Td>
-                <Td>{estadoBadge(pedido.estado)}</Td>
-                <Td className="text-right">
-                  <Button
-                    variant={pedido.estado === "Entregado" ? "secondary" : "primary"}
-                    size="sm"
-                    disabled={pedido.estado === "Entregado"}
-                    onClick={() => avanzarEstado(pedido.id)}
-                  >
-                    {pedido.estado === "Entregado" ? "Cerrado" : "Avanzar"}
-                  </Button>
-                </Td>
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-cafe-3">Cargando pedidos...</div>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <Th>Pedido</Th>
+                <Th>Cliente</Th>
+                <Th>Detalle</Th>
+                <Th>Entrega</Th>
+                <Th>Pago</Th>
+                <Th>Total</Th>
+                <Th>Estado</Th>
+                <Th className="text-right">Acción</Th>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {pedidosFiltrados.map((pedido) => (
+                <TableRow key={pedido.id}>
+                  <Td>
+                    <p className="font-heading text-sm font-bold text-cafe">{pedido.id.slice(0, 8)}</p>
+                    <p className="text-xs text-cafe-3">{formatHora(pedido.createdAt)}</p>
+                  </Td>
+                  <Td>
+                    <p className="font-semibold text-cafe">{pedido.cliente?.nombre ?? "Sin cliente"}</p>
+                    <p className="text-xs text-cafe-3">{pedido.cliente?.telefono ?? "Sin teléfono"}</p>
+                  </Td>
+                  <Td className="max-w-64 text-cafe-2">{detallePedido(pedido)}</Td>
+                  <Td>
+                    <Badge variant={pedido.costoEnvio > 0 ? "neutral" : "good"}>
+                      {pedido.costoEnvio > 0 ? `Domicilio · ${pedido.distanciaKm} km` : "Sin envío"}
+                    </Badge>
+                  </Td>
+                  <Td className="text-cafe-2">{pedido.pagos[0]?.metodo ?? "Pendiente"}</Td>
+                  <Td className="font-heading font-bold">{formatCOP(pedido.total)}</Td>
+                  <Td>{estadoBadge(pedido.estado)}</Td>
+                  <Td className="text-right">
+                    <Button
+                      variant={pedido.estado === "ENTREGADO" ? "secondary" : "primary"}
+                      size="sm"
+                      disabled={pedido.estado === "ENTREGADO" || pedido.estado === "CANCELADO"}
+                      onClick={() => avanzarEstado(pedido.id, pedido.estado)}
+                    >
+                      {pedido.estado === "ENTREGADO" ? "Cerrado" : "Avanzar"}
+                    </Button>
+                  </Td>
+                </TableRow>
+              ))}
+              {pedidosFiltrados.length === 0 && (
+                <TableRow>
+                  <Td colSpan={8} className="py-8 text-center text-cafe-3">No hay pedidos con este filtro.</Td>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
       </Panel>
     </AdminPage>
   );

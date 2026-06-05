@@ -1,112 +1,177 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import { AdminPage, Panel, StatCard } from "@/components/layout/AdminPage";
 import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
 import { Table, TableBody, TableHead, TableRow, Td, Th } from "@/components/ui/Table";
 
-const ventas = [
-  { plato: "Corrientazo completo con pollo", unidades: 38, variacion: "+14%" },
-  { plato: "Corrientazo sin sopa con res", unidades: 27, variacion: "+8%" },
-  { plato: "Bandeja paisa", unidades: 12, variacion: "+4%" },
-];
+interface Pedido {
+  id: string;
+  estado: "PENDIENTE" | "EN_COCINA" | "LISTO" | "ENTREGADO" | "CANCELADO";
+  total: number;
+  costoEnvio: number;
+  createdAt: string;
+  items: Array<{
+    cantidad: number;
+    plato: { id: string; nombre: string; precio: number };
+  }>;
+}
 
-const alertas = [
-  { item: "Pollo entero", estado: "Vence mañana", tipo: "bad" as const },
-  { item: "Maracuyá", estado: "Bajo mínimo", tipo: "warn" as const },
-  { item: "Chorizo", estado: "Agotado", tipo: "bad" as const },
-];
+interface Maestro {
+  id: string;
+  nombre: string;
+  unidad: string;
+  saldo: number;
+}
+
+function formatCOP(value: number) {
+  return `$${new Intl.NumberFormat("es-CO").format(value)}`;
+}
+
+function isToday(iso: string) {
+  return new Date(iso).toDateString() === new Date().toDateString();
+}
 
 export default function DashboardPage() {
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [maestros, setMaestros] = useState<Maestro[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const cargarDatos = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const [pedidosRes, maestrosRes] = await Promise.all([
+          fetch("/api/pedidos"),
+          fetch("/api/maestros"),
+        ]);
+
+        if (!pedidosRes.ok || !maestrosRes.ok) throw new Error();
+
+        const [pedidosData, maestrosData] = await Promise.all([
+          pedidosRes.json(),
+          maestrosRes.json(),
+        ]);
+
+        setPedidos(pedidosData.pedidos ?? []);
+        setMaestros(maestrosData.maestros ?? []);
+      } catch {
+        setError("No se pudo cargar el resumen desde las APIs.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatos();
+  }, []);
+
+  const pedidosHoy = useMemo(() => pedidos.filter((pedido) => isToday(pedido.createdAt)), [pedidos]);
+  const ingresosHoy = pedidosHoy.reduce((total, pedido) => total + pedido.total, 0);
+  const domiciliosHoy = pedidosHoy.filter((pedido) => pedido.costoEnvio > 0).length;
+
+  const alertasInventario = maestros
+    .filter((maestro) => maestro.saldo <= 5)
+    .sort((a, b) => a.saldo - b.saldo);
+
+  const masVendidos = useMemo(() => {
+    const acumulado = new Map<string, { plato: string; unidades: number }>();
+
+    for (const pedido of pedidos) {
+      for (const item of pedido.items) {
+        const actual = acumulado.get(item.plato.id) ?? { plato: item.plato.nombre, unidades: 0 };
+        actual.unidades += item.cantidad;
+        acumulado.set(item.plato.id, actual);
+      }
+    }
+
+    return Array.from(acumulado.values())
+      .sort((a, b) => b.unidades - a.unidades)
+      .slice(0, 5);
+  }, [pedidos]);
+
   return (
     <AdminPage
       eyebrow="Operación"
       title="Inicio"
       description="Resumen rápido para abrir cocina, revisar pedidos y decidir el menú."
-      actions={<Button size="sm">Abrir jornada</Button>}
     >
+      {error && (
+        <div className="rounded-lg border border-aji/30 bg-aji/10 px-4 py-3 text-sm text-aji">{error}</div>
+      )}
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Pedidos hoy" value="46" detail="18 pendientes" tone="warn" />
-        <StatCard label="Ingresos" value="$782k" detail="corte parcial" tone="good" />
-        <StatCard label="Domicilios" value="19" detail="mapa y tarifa activa" tone="blue" />
-        <StatCard label="Alertas" value="4" detail="inventario crítico" tone="bad" />
+        <StatCard label="Pedidos hoy" value={String(pedidosHoy.length)} detail={`${pedidosHoy.filter((p) => p.estado === "PENDIENTE").length} pendientes`} tone="warn" />
+        <StatCard label="Ingresos hoy" value={formatCOP(ingresosHoy)} detail="pedidos del día" tone="good" />
+        <StatCard label="Domicilios hoy" value={String(domiciliosHoy)} detail="con costo de envío" tone="blue" />
+        <StatCard label="Alertas" value={String(alertasInventario.length)} detail="inventario crítico" tone="bad" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.85fr]">
-        <Panel
-          title="Menú publicado"
-          meta="Miércoles 27 de mayo"
-          actions={<Button variant="secondary" size="sm">Editar menú</Button>}
-        >
-          <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-3 p-5">
-              <MenuLine label="Sopa" value="Sopa de lentejas con chorizo y papa criolla" />
-              <MenuLine label="Secos" value="Pollo asado, res en salsa criolla" />
-              <MenuLine label="Jugo" value="Maracuyá con agua de panela" />
-              <MenuLine label="Postre" value="Arroz con leche con canela" />
-            </div>
-            <div className="space-y-3 bg-maiz p-5">
-              <Price label="Completo" value="$18.000" />
-              <Price label="Sin sopa" value="$15.000" />
-              <Price label="Sin postre" value="$14.000" />
-              <Price label="Básico" value="$12.000" />
-            </div>
+        <Panel title="Pedidos recientes" meta={loading ? "Cargando..." : `${pedidos.slice(0, 5).length} últimos`}>
+          <div className="divide-y divide-maiz-3">
+            {pedidos.slice(0, 5).map((pedido) => (
+              <div key={pedido.id} className="flex items-center gap-3 px-5 py-4">
+                <div className="flex-1">
+                  <p className="font-semibold text-cafe">Pedido {pedido.id.slice(0, 8)}</p>
+                  <p className="text-xs text-cafe-3">{pedido.items.map((item) => `${item.cantidad}x ${item.plato.nombre}`).join(" · ") || "Sin items"}</p>
+                </div>
+                <Badge variant={pedido.estado === "PENDIENTE" ? "warn" : pedido.estado === "CANCELADO" ? "bad" : "good"}>
+                  {pedido.estado.replace("_", " ")}
+                </Badge>
+              </div>
+            ))}
+            {!loading && pedidos.length === 0 && (
+              <div className="px-5 py-8 text-center text-sm text-cafe-3">No hay pedidos registrados.</div>
+            )}
           </div>
         </Panel>
 
-        <Panel title="Alertas de inventario" meta="Útiles para Claude">
+        <Panel title="Alertas de inventario" meta="Desde /api/maestros">
           <div className="divide-y divide-maiz-3">
-            {alertas.map((alerta) => (
-              <div key={alerta.item} className="flex items-center gap-3 px-5 py-4">
+            {alertasInventario.map((maestro) => (
+              <div key={maestro.id} className="flex items-center gap-3 px-5 py-4">
                 <div className="flex-1">
-                  <p className="font-semibold text-cafe">{alerta.item}</p>
-                  <p className="text-xs text-cafe-3">Afecta sugerencias del menú del día</p>
+                  <p className="font-semibold text-cafe">{maestro.nombre}</p>
+                  <p className="text-xs text-cafe-3">Saldo actual: {maestro.saldo} {maestro.unidad}</p>
                 </div>
-                <Badge variant={alerta.tipo}>{alerta.estado}</Badge>
+                <Badge variant={maestro.saldo === 0 ? "bad" : "warn"}>
+                  {maestro.saldo === 0 ? "Agotado" : "Bajo"}
+                </Badge>
               </div>
             ))}
+            {!loading && alertasInventario.length === 0 && (
+              <div className="px-5 py-8 text-center text-sm text-cafe-3">Sin alertas de inventario.</div>
+            )}
           </div>
         </Panel>
       </div>
 
-      <Panel title="Más vendidos de la semana" meta="Base para innovación del menú">
+      <Panel title="Más vendidos" meta="Calculado desde pedidos reales">
         <Table>
           <TableHead>
             <TableRow>
               <Th>Plato</Th>
               <Th>Unidades</Th>
-              <Th>Tendencia</Th>
             </TableRow>
           </TableHead>
           <TableBody>
-            {ventas.map((venta) => (
+            {masVendidos.map((venta) => (
               <TableRow key={venta.plato}>
                 <Td className="font-semibold">{venta.plato}</Td>
                 <Td>{venta.unidades}</Td>
-                <Td>
-                  <Badge variant="good">{venta.variacion}</Badge>
-                </Td>
               </TableRow>
             ))}
+            {!loading && masVendidos.length === 0 && (
+              <TableRow>
+                <Td colSpan={2} className="py-8 text-center text-cafe-3">No hay ventas registradas.</Td>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </Panel>
     </AdminPage>
-  );
-}
-
-function MenuLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-maiz-3 bg-elevated p-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-achiote-dark">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-cafe">{value}</p>
-    </div>
-  );
-}
-
-function Price({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between border-b border-maiz-3 pb-2 last:border-b-0 last:pb-0">
-      <span className="text-sm text-cafe-2">{label}</span>
-      <span className="font-heading text-lg font-extrabold text-cafe">{value}</span>
-    </div>
   );
 }

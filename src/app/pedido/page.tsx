@@ -2,19 +2,28 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type Dispatch } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
 import { useSession } from "@/contexts/SessionContext";
 
-const COMBOS = [
-  { id: "completo", nombre: "Completo", descripcion: "Sopa, seco, jugo y postre", precio: 15000 },
-  { id: "sin-sopa", nombre: "Sin sopa", descripcion: "Seco, jugo y postre", precio: 13000 },
-  { id: "sin-postre", nombre: "Sin postre", descripcion: "Sopa, seco y jugo", precio: 13500 },
-  { id: "basico", nombre: "Básico", descripcion: "Seco y jugo", precio: 11000 },
-];
+interface Plato {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  precio: number;
+  disponible: boolean;
+  categoria: { nombre: string };
+}
 
-const SECOS = ["Pollo a la plancha", "Sobrebarriga en salsa criolla", "Cerdo apanado"];
-
-type ChoiceOption = { value: string; label: string; detail: string };
+interface Cliente {
+  id: string;
+  nombre: string;
+  email?: string | null;
+  telefono?: string | null;
+  direccion?: string | null;
+  puntoReferencia?: string | null;
+}
 
 function formatCOP(value: number) {
   return `$${new Intl.NumberFormat("es-CO").format(value)}`;
@@ -23,20 +32,121 @@ function formatCOP(value: number) {
 export default function PedidoPage() {
   const router = useRouter();
   const { user, loading } = useSession();
-  const [comboId, setComboId] = useState(COMBOS[0].id);
-  const [seco, setSeco] = useState(SECOS[0]);
-  const [entrega, setEntrega] = useState<"recoger" | "domicilio">("recoger");
-  const [pago, setPago] = useState<"contra_entrega" | "tarjeta">("contra_entrega");
 
-  const combo = COMBOS.find((item) => item.id === comboId) ?? COMBOS[0];
-  const domicilio = entrega === "domicilio" ? 4500 : 0;
-  const total = combo.precio + domicilio;
+  const [platos, setPlatos] = useState<Plato[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [platoId, setPlatoId] = useState("");
+  const [cantidad, setCantidad] = useState("1");
+  const [latCliente, setLatCliente] = useState("");
+  const [lngCliente, setLngCliente] = useState("");
+  const [observaciones, setObservaciones] = useState("");
+  const [loadingData, setLoadingData] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/auth?mode=login");
     }
   }, [loading, router, user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const cargarDatos = async () => {
+      setLoadingData(true);
+      setError("");
+
+      try {
+        const [platosRes, clientesRes] = await Promise.all([
+          fetch("/api/platos"),
+          fetch("/api/clientes"),
+        ]);
+
+        if (!platosRes.ok || !clientesRes.ok) throw new Error();
+
+        const [platosData, clientesData] = await Promise.all([
+          platosRes.json(),
+          clientesRes.json(),
+        ]);
+
+        const disponibles: Plato[] = (platosData.platos ?? []).filter((plato: Plato) => plato.disponible);
+        setPlatos(disponibles);
+        setClientes(clientesData.clientes ?? []);
+        setPlatoId(disponibles[0]?.id ?? "");
+      } catch {
+        setError("No se pudieron cargar los datos del pedido.");
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    cargarDatos();
+  }, [user]);
+
+  const clienteActual = useMemo(
+    () => clientes.find((cliente) => cliente.email?.toLowerCase() === user?.email.toLowerCase()) ?? null,
+    [clientes, user?.email]
+  );
+
+  const platoSeleccionado = useMemo(
+    () => platos.find((plato) => plato.id === platoId) ?? null,
+    [platoId, platos]
+  );
+
+  const subtotal = platoSeleccionado ? platoSeleccionado.precio * Number(cantidad || 0) : 0;
+
+  const handleConfirmar = async () => {
+    if (!clienteActual || !platoSeleccionado) return;
+
+    const cantidadNumber = Number(cantidad);
+    const lat = Number(latCliente);
+    const lng = Number(lngCliente);
+
+    if (!cantidad || Number.isNaN(cantidadNumber) || cantidadNumber <= 0) {
+      setError("Ingresa una cantidad válida.");
+      return;
+    }
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      setError("Ingresa coordenadas válidas para calcular el domicilio.");
+      return;
+    }
+
+    setCreating(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const res = await fetch("/api/pedidos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clienteId: clienteActual.id,
+          latCliente: lat,
+          lngCliente: lng,
+          items: [{ platoId: platoSeleccionado.id, cantidad: cantidadNumber }],
+          observaciones: observaciones.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "No se pudo crear el pedido.");
+        return;
+      }
+
+      setSuccess(`Pedido creado. ${data.envio?.mensaje ?? ""}`);
+      setCantidad("1");
+      setObservaciones("");
+    } catch {
+      setError("Error de conexión al crear el pedido.");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   if (loading || !user) {
     return (
@@ -64,76 +174,70 @@ export default function PedidoPage() {
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-achiote-dark">
             Pedido cliente
           </p>
-          <h1 className="font-heading text-4xl font-extrabold text-cafe">Arma tu corrientazo</h1>
+          <h1 className="font-heading text-4xl font-extrabold text-cafe">Arma tu pedido</h1>
           <p className="mt-2 text-sm leading-relaxed text-cafe-2">
-            Escoge el combo, el seco, la entrega y la forma de pago. La creación final del pedido se conecta al backend de pedidos.
+            Elige un plato disponible. El precio y la disponibilidad vienen de la API de platos.
           </p>
 
-          <div className="mt-7 space-y-7">
+          {error && (
+            <div className="mt-5 rounded-lg border border-aji/30 bg-aji/10 px-4 py-3 text-sm text-aji">{error}</div>
+          )}
+          {success && (
+            <div className="mt-5 rounded-lg border border-hoja/30 bg-hoja/10 px-4 py-3 text-sm text-hoja">{success}</div>
+          )}
+
+          <div className="mt-7 space-y-6">
             <section>
-              <h2 className="mb-3 font-heading text-xl font-extrabold">Combo</h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {COMBOS.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setComboId(item.id)}
-                    className={[
-                      "rounded-xl border p-4 text-left transition",
-                      comboId === item.id
-                        ? "border-rojo-ladrillo bg-rojo-ladrillo text-maiz"
-                        : "border-maiz-3 bg-maiz hover:border-achiote",
-                    ].join(" ")}
-                  >
-                    <span className="block font-heading text-lg font-extrabold">{item.nombre}</span>
-                    <span className={comboId === item.id ? "mt-1 block text-sm text-maiz/80" : "mt-1 block text-sm text-cafe-2"}>
-                      {item.descripcion}
-                    </span>
-                    <span className="mt-3 block font-bold">{formatCOP(item.precio)}</span>
-                  </button>
-                ))}
-              </div>
+              <h2 className="mb-3 font-heading text-xl font-extrabold">Plato</h2>
+              {loadingData ? (
+                <p className="text-sm text-cafe-3">Cargando platos...</p>
+              ) : (
+                <select
+                  value={platoId}
+                  onChange={(event) => setPlatoId(event.target.value)}
+                  className="w-full rounded-md border border-maiz-3 bg-maiz px-3 py-2 text-sm text-cafe outline-none focus:border-rojo-ladrillo focus:ring-2 focus:ring-rojo-ladrillo/15"
+                >
+                  {platos.map((plato) => (
+                    <option key={plato.id} value={plato.id}>
+                      {plato.nombre} - {formatCOP(plato.precio)}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {platoSeleccionado && (
+                <p className="mt-2 text-sm text-cafe-2">{platoSeleccionado.descripcion}</p>
+              )}
             </section>
 
-            <section>
-              <h2 className="mb-3 font-heading text-xl font-extrabold">Seco</h2>
-              <div className="flex flex-wrap gap-2">
-                {SECOS.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setSeco(item)}
-                    className={[
-                      "rounded-full border px-4 py-2 text-sm font-semibold",
-                      seco === item ? "border-cafe bg-cafe text-maiz" : "border-maiz-3 bg-maiz text-cafe hover:border-achiote",
-                    ].join(" ")}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </section>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Input
+                label="Cantidad"
+                type="number"
+                min="1"
+                value={cantidad}
+                onChange={(event) => setCantidad(event.target.value)}
+              />
+              <Input
+                label="Latitud"
+                placeholder="6.15155"
+                value={latCliente}
+                onChange={(event) => setLatCliente(event.target.value)}
+              />
+              <Input
+                label="Longitud"
+                placeholder="-75.61657"
+                value={lngCliente}
+                onChange={(event) => setLngCliente(event.target.value)}
+              />
+            </div>
 
-            <section className="grid gap-4 sm:grid-cols-2">
-              <ChoiceGroup
-                title="Entrega"
-                value={entrega}
-                options={[
-                  { value: "recoger", label: "Recoger", detail: "Sin costo adicional" },
-                  { value: "domicilio", label: "Domicilio", detail: "Costo según distancia" },
-                ]}
-                onChange={(value) => setEntrega(value as "recoger" | "domicilio")}
-              />
-              <ChoiceGroup
-                title="Pago"
-                value={pago}
-                options={[
-                  { value: "contra_entrega", label: "Contra entrega", detail: "Pagas al recibir" },
-                  { value: "tarjeta", label: "Tarjeta", detail: "Stripe pendiente" },
-                ]}
-                onChange={(value) => setPago(value as "contra_entrega" | "tarjeta")}
-              />
-            </section>
+            <Input
+              label="Observaciones"
+              placeholder="Indicaciones para el pedido"
+              value={observaciones}
+              onChange={(event) => setObservaciones(event.target.value)}
+              maxLength={200}
+            />
           </div>
         </div>
 
@@ -141,66 +245,28 @@ export default function PedidoPage() {
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-achiote">Resumen</p>
           <h2 className="mt-2 font-heading text-2xl font-extrabold">Tu pedido</h2>
           <div className="mt-5 space-y-3 text-sm">
-            <SummaryRow label="Combo" value={combo.nombre} />
-            <SummaryRow label="Seco" value={seco} />
-            <SummaryRow label="Entrega" value={entrega === "recoger" ? "Recoger" : "Domicilio"} />
-            <SummaryRow label="Pago" value={pago === "tarjeta" ? "Tarjeta" : "Contra entrega"} />
+            <SummaryRow label="Cliente" value={clienteActual?.nombre ?? "Sin cliente asociado"} />
+            <SummaryRow label="Plato" value={platoSeleccionado?.nombre ?? "Sin plato"} />
+            <SummaryRow label="Cantidad" value={cantidad || "0"} />
           </div>
           <div className="mt-5 border-t border-maiz/15 pt-4">
-            <SummaryRow label="Almuerzo" value={formatCOP(combo.precio)} />
-            <SummaryRow label="Domicilio" value={formatCOP(domicilio)} />
-            <div className="mt-4 flex items-center justify-between font-heading text-2xl font-extrabold">
-              <span>Total</span>
-              <span className="text-achiote">{formatCOP(total)}</span>
-            </div>
+            <SummaryRow label="Subtotal" value={formatCOP(subtotal)} />
+            <p className="mt-2 text-xs leading-relaxed text-maiz/60">
+              El costo de domicilio lo calcula el backend al confirmar el pedido.
+            </p>
           </div>
-          <button
+          <Button
             type="button"
-            className="mt-6 w-full rounded-md bg-achiote px-4 py-3 text-sm font-semibold text-cafe opacity-70"
-            disabled
+            className="mt-6 w-full"
+            loading={creating}
+            disabled={!clienteActual || !platoSeleccionado || loadingData}
+            onClick={handleConfirmar}
           >
             Confirmar pedido
-          </button>
-          <p className="mt-3 text-xs leading-relaxed text-maiz/60">
-            Falta conectar la confirmación con pedidos, mapas y pagos.
-          </p>
+          </Button>
         </aside>
       </section>
     </main>
-  );
-}
-
-function ChoiceGroup({
-  title,
-  value,
-  options,
-  onChange,
-}: {
-  title: string;
-  value: string;
-  options: ChoiceOption[];
-  onChange: Dispatch<string>;
-}) {
-  return (
-    <div>
-      <h2 className="mb-3 font-heading text-xl font-extrabold">{title}</h2>
-      <div className="grid gap-2">
-        {options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            className={[
-              "rounded-xl border px-4 py-3 text-left",
-              value === option.value ? "border-achiote bg-achiote/15" : "border-maiz-3 bg-maiz hover:border-achiote",
-            ].join(" ")}
-          >
-            <span className="block font-semibold">{option.label}</span>
-            <span className="mt-1 block text-xs text-cafe-2">{option.detail}</span>
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
