@@ -1,14 +1,60 @@
 // app/api/pedidos/route.ts
-// Restaurante "La Cuchara" — Solo domicilios
-// Todo pedido requiere cliente y coordenadas de entrega.
+// Restaurante "La Cuchara" — Domicilio o recogida en punto
+// Horario de atención: Lunes a Sábado, 11:00 a.m. – 7:00 p.m. (hora Colombia)
 //
-// GET  /api/pedidos          — Lista pedidos
-// POST /api/pedidos          — Crea pedido a domicilio
-// PUT  /api/pedidos          — Actualiza estado del pedido
+// GET  /api/pedidos  — Lista pedidos
+// POST /api/pedidos  — Crea pedido (domicilio o recogida)
+// PUT  /api/pedidos  — Actualiza estado
 
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
+
+// ─── Horario de atención ──────────────────────────────────────────────────────
+
+const HORA_APERTURA  = 11; // 11:00 a.m.
+const HORA_CIERRE    = 19; // 7:00 p.m.
+// 0=Domingo, 1=Lunes, ..., 6=Sábado
+const DIAS_ATENCION  = [1, 2, 3, 4, 5, 6]; // Lunes a Sábado
+
+/**
+ * Verifica si el restaurante está abierto en este momento.
+ * Usa la zona horaria de Colombia (America/Bogota, UTC-5).
+ */
+function estaAbierto(): { abierto: boolean; mensaje: string } {
+  const ahora     = new Date();
+  // Convertir a hora Colombia
+  const enColombia = new Date(ahora.toLocaleString("en-US", { timeZone: "America/Bogota" }));
+  const dia        = enColombia.getDay();  // 0=Dom ... 6=Sab
+  const hora       = enColombia.getHours();
+  const minutos    = enColombia.getMinutes();
+
+  const diasNombre = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+  if (!DIAS_ATENCION.includes(dia)) {
+    return {
+      abierto: false,
+      mensaje: `Lo sentimos, hoy es ${diasNombre[dia]} y no atendemos. Nuestro horario es lunes a sábado de 11:00 a.m. a 7:00 p.m.`,
+    };
+  }
+
+  const horaActual = hora + minutos / 60;
+  if (horaActual < HORA_APERTURA) {
+    return {
+      abierto: false,
+      mensaje: `Aún no hemos abierto. Atendemos de 11:00 a.m. a 7:00 p.m.`,
+    };
+  }
+
+  if (horaActual >= HORA_CIERRE) {
+    return {
+      abierto: false,
+      mensaje: `Ya cerramos por hoy. Atendemos lunes a sábado de 11:00 a.m. a 7:00 p.m.`,
+    };
+  }
+
+  return { abierto: true, mensaje: "Abierto" };
+}
 
 // ─── Lógica de domicilio ──────────────────────────────────────────────────────
 
@@ -32,9 +78,9 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
 }
 
 function calcularEnvio(distKm: number): { costo: number; cobertura: boolean } {
-  if (distKm <= TARIFA_PLANA_KM)     return { costo: TARIFA_PLANA_VALOR,            cobertura: true  };
+  if (distKm <= TARIFA_PLANA_KM)     return { costo: TARIFA_PLANA_VALOR,                cobertura: true  };
   if (distKm <= COBERTURA_MAXIMA_KM) return { costo: Math.ceil(distKm) * TARIFA_POR_KM, cobertura: true  };
-  return                                     { costo: 0,                             cobertura: false };
+  return                                     { costo: 0,                                 cobertura: false };
 }
 
 // ─── GET ──────────────────────────────────────────────────────────────────────
@@ -44,13 +90,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!session) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
-  const estado = searchParams.get("estado");
+  const estado      = searchParams.get("estado");
+  const tipoEntrega = searchParams.get("tipoEntrega"); // filtro opcional
 
   try {
     const pedidos = await prisma.pedido.findMany({
       where: {
         deleted: false,
-        ...(estado ? { estado: estado as never } : {}),
+        ...(estado      ? { estado:      estado      as never } : {}),
+        ...(tipoEntrega ? { tipoEntrega: tipoEntrega as never } : {}),
       },
       include: {
         cliente: {
@@ -79,24 +127,37 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 /**
  * POST /api/pedidos
-*
+ *
  * Body: {
- *   clienteId:      string    // Obligatorio — el cliente debe existir en la BD
- *   latCliente:     number    // Obligatorio — coordenadas para calcular envío
- *   lngCliente:     number    // Obligatorio
- *   items:          [{ platoId: string, cantidad: number }]
+ *   clienteId:      string              // Siempre obligatorio
+ *   tipoEntrega:    "DOMICILIO"|"RECOGIDA"  // Obligatorio
+ *   items:          [{ platoId, cantidad }] // Obligatorio
+ *
+ *   // Solo requeridos si tipoEntrega === "DOMICILIO":
+ *   latCliente?:    number
+ *   lngCliente?:    number
+ *
  *   nota?:          string
- *   observaciones?: string    // máx 200 caracteres
+ *   observaciones?: string   // máx 200 caracteres
  * }
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
-  const body = await request.json();
-  const { clienteId, latCliente, lngCliente, items, nota, observaciones } = body;
+  // ── Verificar horario de atención ───────────────────────────────────────────
+  const horario = estaAbierto();
+  if (!horario.abierto) {
+    return NextResponse.json(
+      { error: horario.mensaje },
+      { status: 503 } // 503 Service Unavailable: fuera de horario
+    );
+  }
 
-  // ── Validaciones ────────────────────────────────────────────────────────────
+  const body = await request.json();
+  const { clienteId, tipoEntrega, items, nota, observaciones, latCliente, lngCliente } = body;
+
+  // ── Validaciones generales ──────────────────────────────────────────────────
 
   if (!clienteId) {
     return NextResponse.json(
@@ -105,9 +166,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  if (latCliente === undefined || lngCliente === undefined) {
+  if (!tipoEntrega || !["DOMICILIO", "RECOGIDA"].includes(tipoEntrega)) {
     return NextResponse.json(
-      { error: "Se requieren las coordenadas del cliente (latCliente y lngCliente) para calcular el domicilio." },
+      { error: "tipoEntrega debe ser DOMICILIO o RECOGIDA" },
       { status: 400 }
     );
   }
@@ -126,31 +187,45 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // ── Calcular costo de domicilio ─────────────────────────────────────────────
+  // ── Calcular costo de envío ─────────────────────────────────────────────────
+  // Solo aplica para domicilio. Recogida siempre es $0.
 
-  const distanciaKm = haversineKm(RESTAURANTE_LAT, RESTAURANTE_LNG, latCliente, lngCliente);
-  const envio       = calcularEnvio(distanciaKm);
+  let costoEnvio  = 0;
+  let distanciaKm = 0;
 
-  if (!envio.cobertura) {
-    return NextResponse.json(
-      {
-        error: `Sin cobertura de domicilio. La dirección está a ${distanciaKm.toFixed(1)} km del restaurante. Solo hacemos domicilios hasta ${COBERTURA_MAXIMA_KM} km.`,
-        distancia_km:        parseFloat(distanciaKm.toFixed(2)),
-        cobertura_maxima_km: COBERTURA_MAXIMA_KM,
-      },
-      { status: 422 }
-    );
+  if (tipoEntrega === "DOMICILIO") {
+    if (latCliente === undefined || lngCliente === undefined) {
+      return NextResponse.json(
+        { error: "Para domicilio se requieren las coordenadas del cliente (latCliente y lngCliente)." },
+        { status: 400 }
+      );
+    }
+
+    distanciaKm   = haversineKm(RESTAURANTE_LAT, RESTAURANTE_LNG, latCliente, lngCliente);
+    const envio   = calcularEnvio(distanciaKm);
+
+    if (!envio.cobertura) {
+      return NextResponse.json(
+        {
+          error: `Sin cobertura de domicilio. La dirección está a ${distanciaKm.toFixed(1)} km del restaurante. Solo hacemos domicilios hasta ${COBERTURA_MAXIMA_KM} km. Puedes elegir recoger en el punto sin costo de envío.`,
+          distancia_km:        parseFloat(distanciaKm.toFixed(2)),
+          cobertura_maxima_km: COBERTURA_MAXIMA_KM,
+          sugerencia:          "RECOGIDA",
+        },
+        { status: 422 }
+      );
+    }
+
+    costoEnvio = envio.costo;
   }
 
-  // ── Crear pedido ────────────────────────────────────────────────────────────
+  // ── Crear pedido en BD ──────────────────────────────────────────────────────
 
   try {
     const pedido = await prisma.$transaction(async (tx) => {
       // Verificar que el cliente existe
       const cliente = await tx.cliente.findUnique({ where: { id: clienteId } });
-      if (!cliente || cliente.deleted) {
-        throw new Error("Cliente no encontrado");
-      }
+      if (!cliente || cliente.deleted) throw new Error("Cliente no encontrado");
 
       // Obtener precios actuales de los platos
       const platoIds: string[] = items.map((i: { platoId: string }) => i.platoId);
@@ -165,22 +240,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       const precioMap = new Map(platos.map((p) => [p.id, p.precio]));
 
-      // Calcular subtotal (sin envío)
       let subtotal = 0;
       for (const item of items) {
         subtotal += (precioMap.get(item.platoId) ?? 0) * item.cantidad;
       }
 
-      // Total = subtotal + costo de envío
-      const total = subtotal + envio.costo;
+      const total = subtotal + costoEnvio;
 
       return tx.pedido.create({
         data: {
           clienteId,
           atendidoPorId: session.id,
+          tipoEntrega,
           subtotal,
           total,
-          costoEnvio:    envio.costo,
+          costoEnvio,
           distanciaKm:   parseFloat(distanciaKm.toFixed(2)),
           nota:          nota          ?? null,
           observaciones: observaciones ?? null,
@@ -205,12 +279,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(
       {
         pedido,
-        envio: {
-          costo:        envio.costo,
-          distancia_km: parseFloat(distanciaKm.toFixed(2)),
-          mensaje:      distanciaKm <= TARIFA_PLANA_KM
-            ? `Envío zona cercana — $${envio.costo.toLocaleString("es-CO")}`
-            : `Envío a ${distanciaKm.toFixed(1)} km — $${envio.costo.toLocaleString("es-CO")}`,
+        entrega: {
+          tipo:         tipoEntrega,
+          costo_envio:  costoEnvio,
+          distancia_km: tipoEntrega === "DOMICILIO" ? parseFloat(distanciaKm.toFixed(2)) : null,
+          mensaje:      tipoEntrega === "RECOGIDA"
+            ? "El cliente recoge en el punto. Sin costo de envío."
+            : distanciaKm <= TARIFA_PLANA_KM
+              ? `Domicilio zona cercana (${distanciaKm.toFixed(1)} km) — $${costoEnvio.toLocaleString("es-CO")}`
+              : `Domicilio a ${distanciaKm.toFixed(1)} km — $${costoEnvio.toLocaleString("es-CO")}`,
         },
       },
       { status: 201 }
@@ -226,11 +303,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
 // ─── PUT ──────────────────────────────────────────────────────────────────────
 
-/**
- * PUT /api/pedidos
- * Actualiza el estado de un pedido.
- * Body: { id: string, estado: Enum_EstadoPedido }
- */
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
@@ -254,7 +326,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       data:  { estado },
       include: {
         cliente:     { select: { id: true, nombre: true } },
-        atendidoPor: { select: { id: true, name: true } },
+        atendidoPor: { select: { id: true, name: true }  },
       },
     });
     return NextResponse.json({ pedido });

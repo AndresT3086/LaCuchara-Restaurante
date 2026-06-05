@@ -36,6 +36,11 @@ enum Enum_MetodoPago {
   TRANSFERENCIA
 }
 
+enum Enum_TipoEntrega {
+  DOMICILIO  // El restaurante lleva el pedido al cliente
+  RECOGIDA   // El cliente recoge en el punto
+}
+
 // Usuario del sistema (empleados del restaurante)
 model User {
   id        String    @id @default(cuid())
@@ -148,6 +153,7 @@ model Pedido {
   deleted        Boolean           @default(false)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
+  tipoEntrega   Enum_TipoEntrega  @default(DOMICILIO)
 
   clienteId     String            // Ahora obligatorio
   cliente       Cliente           @relation(fields: [clienteId], references: [id])
