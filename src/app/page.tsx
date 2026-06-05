@@ -1,19 +1,7 @@
-import Link from "next/link";
+"use client";
 
-const MENU_HOY = {
-  fecha: "Miércoles 27 de mayo",
-  sopa: "Crema de auyama con cilantro",
-  secos: ["Pollo a la plancha", "Sobrebarriga en salsa criolla", "Cerdo apanado"],
-  acompanantes: "Arroz, fríjoles, ensalada y tajada madura",
-  jugo: "Mora, lulo o maracuyá",
-  postre: "Arroz con leche con canela",
-  precios: {
-    completo: 15000,
-    sinSopa: 13000,
-    sinPostre: 13500,
-    basico: 11000,
-  },
-};
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
 const PASOS_PEDIDO = [
   {
@@ -37,7 +25,49 @@ function formatCOP(value: number) {
   return `$${new Intl.NumberFormat("es-CO").format(value)}`;
 }
 
+interface Plato {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  precio: number;
+  disponible: boolean;
+  categoria: { nombre: string };
+}
+
 export default function LandingPage() {
+  const [platos, setPlatos] = useState<Plato[]>([]);
+  const [loadingMenu, setLoadingMenu] = useState(true);
+
+  useEffect(() => {
+    const cargarMenu = async () => {
+      setLoadingMenu(true);
+
+      try {
+        const res = await fetch("/api/platos");
+        if (!res.ok) {
+          setPlatos([]);
+          return;
+        }
+
+        const data = await res.json();
+        setPlatos((data.platos ?? []).filter((plato: Plato) => plato.disponible));
+      } catch {
+        setPlatos([]);
+      } finally {
+        setLoadingMenu(false);
+      }
+    };
+
+    cargarMenu();
+  }, []);
+
+  const precioDesde = useMemo(
+    () => platos.reduce<number | null>((min, plato) => (min === null ? plato.precio : Math.min(min, plato.precio)), null),
+    [platos]
+  );
+
+  const destacados = platos.slice(0, 4);
+
   return (
     <div className="min-h-screen bg-maiz text-cafe">
       <header className="sticky top-0 z-20 border-b border-maiz-3 bg-maiz/90 backdrop-blur">
@@ -98,9 +128,9 @@ export default function LandingPage() {
               </Link>
             </div>
             <div className="mt-9 flex flex-wrap gap-8 border-t border-dashed border-maiz-3 pt-6">
-              <HeroMeta label="Estado" value="Abierto hoy" dot />
-              <HeroMeta label="Tiempo" value="25-35 min" />
-              <HeroMeta label="Desde" value={formatCOP(MENU_HOY.precios.basico)} />
+              <HeroMeta label="Carta" value={loadingMenu ? "Cargando" : `${platos.length} disponibles`} dot />
+              <HeroMeta label="Pedido" value="Requiere sesión" />
+              <HeroMeta label="Desde" value={precioDesde ? formatCOP(precioDesde) : "Según carta"} />
             </div>
           </div>
 
@@ -121,19 +151,20 @@ export default function LandingPage() {
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-achiote-dark">Pedido de hoy</p>
               <p className="mt-1 font-heading text-xl font-extrabold">Completo o a tu gusto</p>
               <div className="mt-4 grid gap-2 text-xs font-semibold">
-                <div className="flex items-center justify-between rounded-lg bg-elevated px-3 py-2">
-                  <span>Completo</span>
-                  <span>{formatCOP(MENU_HOY.precios.completo)}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg bg-elevated px-3 py-2">
-                  <span>Básico</span>
-                  <span>{formatCOP(MENU_HOY.precios.basico)}</span>
-                </div>
+                {destacados.slice(0, 2).map((plato) => (
+                  <div key={plato.id} className="flex items-center justify-between gap-3 rounded-lg bg-elevated px-3 py-2">
+                    <span className="truncate">{plato.nombre}</span>
+                    <span>{formatCOP(plato.precio)}</span>
+                  </div>
+                ))}
+                {!loadingMenu && destacados.length === 0 && (
+                  <div className="rounded-lg bg-elevated px-3 py-2 text-cafe-3">Pidelo YA!</div>
+                )}
               </div>
             </div>
             <div className="absolute -right-4 bottom-16 rotate-[-3deg] rounded-l rounded-r-xl bg-cafe px-7 py-4 text-maiz shadow-[0_12px_24px_-6px_rgba(58,36,24,0.5)]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-maiz/70">Completo</p>
-              <p className="font-heading text-3xl font-extrabold text-achiote">{formatCOP(MENU_HOY.precios.completo)}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-maiz/70">Desde</p>
+              <p className="font-heading text-3xl font-extrabold text-achiote">{precioDesde ? formatCOP(precioDesde) : "Carta"}</p>
             </div>
           </div>
         </section>
@@ -146,35 +177,45 @@ export default function LandingPage() {
           />
           <div className="grid overflow-hidden rounded-3xl border border-maiz-3 bg-elevated shadow-warm-md lg:grid-cols-[1.05fr_0.95fr]">
             <div className="p-8 lg:p-10">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-achiote-dark">{MENU_HOY.fecha}</p>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-achiote-dark">Carta disponible</p>
               <h3 className="mb-7 font-heading text-3xl font-extrabold text-cafe">Servicio del mediodía</h3>
-              <Course number="1" title="Sopa" desc={MENU_HOY.sopa} />
-              <Course number="2" title="Seco · escoge uno" desc={MENU_HOY.acompanantes}>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {MENU_HOY.secos.map((seco, index) => (
-                    <span
-                      key={seco}
-                      className={[
-                        "rounded-full border px-3 py-1 text-xs font-semibold",
-                        index === 0 ? "border-rojo-ladrillo bg-rojo-ladrillo text-maiz" : "border-maiz-3 bg-maiz text-cafe",
-                      ].join(" ")}
-                    >
-                      {seco}
+              {loadingMenu ? (
+                <p className="py-8 text-sm text-cafe-3">Cargando platos...</p>
+              ) : destacados.length > 0 ? (
+                destacados.map((plato, index) => (
+                  <Course
+                    key={plato.id}
+                    number={String(index + 1)}
+                    title={plato.nombre}
+                    desc={plato.descripcion}
+                  >
+                    <span className="mt-2 inline-flex rounded-full border border-maiz-3 bg-maiz px-3 py-1 text-xs font-semibold text-cafe">
+                      {plato.categoria.nombre}
                     </span>
-                  ))}
-                </div>
-              </Course>
-              <Course number="3" title="Jugo natural" desc={MENU_HOY.jugo} />
-              <Course number="4" title="Postre" desc={MENU_HOY.postre} />
+                  </Course>
+                ))
+              ) : (
+                <p className="py-8 text-sm text-cafe-3">No hay platos disponibles para mostrar.</p>
+              )}
             </div>
             <div id="pedido" className="relative bg-cafe p-8 text-maiz lg:p-10">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(224,122,44,0.18),transparent_45%)]" />
               <div className="relative">
-                <h3 className="mb-6 text-[13px] font-bold uppercase tracking-[0.14em] text-achiote">Combos</h3>
-                <Combo name="Completo" desc="Sopa · Seco · Jugo · Postre" price={MENU_HOY.precios.completo} featured />
-                <Combo name="Sin sopa" desc="Seco · Jugo · Postre" price={MENU_HOY.precios.sinSopa} />
-                <Combo name="Sin postre" desc="Sopa · Seco · Jugo" price={MENU_HOY.precios.sinPostre} />
-                <Combo name="Básico" desc="Seco · Jugo" price={MENU_HOY.precios.basico} />
+                <h3 className="mb-6 text-[13px] font-bold uppercase tracking-[0.14em] text-achiote">Platos</h3>
+                {destacados.map((plato, index) => (
+                  <Combo
+                    key={plato.id}
+                    name={plato.nombre}
+                    desc={plato.categoria.nombre}
+                    price={plato.precio}
+                    featured={index === 0}
+                  />
+                ))}
+                {!loadingMenu && destacados.length === 0 && (
+                  <p className="rounded-lg border border-maiz/15 p-4 text-sm text-maiz/70">
+                    Inicia sesión para consultar la carta disponible.
+                  </p>
+                )}
                 <Link href="/pedido" className="mt-8 flex w-full items-center justify-center rounded-md bg-achiote px-5 py-3 font-semibold text-cafe hover:bg-achiote/90">
                   Armar pedido
                 </Link>
