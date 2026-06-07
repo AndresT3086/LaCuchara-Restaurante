@@ -10,13 +10,21 @@ import { getSessionUser } from "@/lib/auth";
 
 /**
  * GET /api/clientes
- * Retorna todos los clientes activos.
+ * ADMIN/USER → todos los clientes activos.
+ * CLIENTE    → solo su propio registro (matched por email).
  */
 export async function GET(): Promise<NextResponse> {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   try {
+    if (session.role === "CLIENTE") {
+      const cliente = await prisma.cliente.findFirst({
+        where: { email: session.email, deleted: false },
+      });
+      return NextResponse.json({ clientes: cliente ? [cliente] : [] });
+    }
+
     const clientes = await prisma.cliente.findMany({
       where: { deleted: false },
       orderBy: { nombre: "asc" },

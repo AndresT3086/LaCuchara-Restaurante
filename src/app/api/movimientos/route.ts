@@ -40,6 +40,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  if (session.role === "CLIENTE") return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
 
   const { maestroId, tipo, cantidad, nota } = await request.json();
 

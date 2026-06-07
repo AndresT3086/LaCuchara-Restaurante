@@ -31,6 +31,7 @@ export async function GET(): Promise<NextResponse> {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  if (session.role === "CLIENTE") return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
 
   const { nombre, descripcion, precio, categoriaId, disponible } = await request.json();
   if (!nombre || !descripcion || precio === undefined || !categoriaId) {
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  if (session.role === "CLIENTE") return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
 
   const { id, nombre, descripcion, precio, disponible, categoriaId } = await request.json();
   if (!id) return NextResponse.json({ error: "Se requiere el ID" }, { status: 400 });

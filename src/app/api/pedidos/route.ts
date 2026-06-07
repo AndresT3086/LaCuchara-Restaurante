@@ -91,14 +91,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const { searchParams } = new URL(request.url);
   const estado      = searchParams.get("estado");
-  const tipoEntrega = searchParams.get("tipoEntrega"); // filtro opcional
+  const tipoEntrega = searchParams.get("tipoEntrega");
 
   try {
+    // CLIENTE solo puede ver sus propios pedidos
+    let clienteIdFiltro: string | undefined;
+    if (session.role === "CLIENTE") {
+      const clientePropio = await prisma.cliente.findFirst({
+        where: { email: session.email, deleted: false },
+        select: { id: true },
+      });
+      if (!clientePropio) return NextResponse.json({ pedidos: [] });
+      clienteIdFiltro = clientePropio.id;
+    }
+
     const pedidos = await prisma.pedido.findMany({
       where: {
         deleted: false,
-        ...(estado      ? { estado:      estado      as never } : {}),
-        ...(tipoEntrega ? { tipoEntrega: tipoEntrega as never } : {}),
+        ...(clienteIdFiltro ? { clienteId: clienteIdFiltro }      : {}),
+        ...(estado           ? { estado:      estado      as never } : {}),
+        ...(tipoEntrega      ? { tipoEntrega: tipoEntrega as never } : {}),
       },
       include: {
         cliente: {
