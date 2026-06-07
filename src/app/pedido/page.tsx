@@ -123,10 +123,11 @@ export default function PedidoPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clienteId: clienteActual.id,
-          latCliente: lat,
-          lngCliente: lng,
-          items: [{ platoId: platoSeleccionado.id, cantidad: cantidadNumber }],
+          clienteId:    clienteActual.id,
+          tipoEntrega:  "DOMICILIO",
+          latCliente:   lat,
+          lngCliente:   lng,
+          items:        [{ platoId: platoSeleccionado.id, cantidad: cantidadNumber }],
           observaciones: observaciones.trim() || null,
         }),
       });
@@ -138,7 +139,7 @@ export default function PedidoPage() {
         return;
       }
 
-      setSuccess(`Pedido creado. ${data.envio?.mensaje ?? ""}`);
+      setSuccess(`Pedido creado. ${data.entrega?.mensaje ?? ""}`);
       setCantidad("1");
       setObservaciones("");
     } catch {
