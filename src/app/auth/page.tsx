@@ -21,10 +21,11 @@ export default function AuthPage({
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
 
-  const redirectByRole = (role: string) => {
+  const redirectByRole = (role: string | undefined) => {
     if (role === "CLIENTE") router.push("/pedido");
     else if (role === "USER") router.push("/pedidos");
-    else router.push("/dashboard");
+    else if (role === "ADMIN") router.push("/dashboard");
+    else router.push("/auth");
     router.refresh();
   };
 
