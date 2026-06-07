@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminPage, Panel, StatCard } from "@/components/layout/AdminPage";
 import Badge from "@/components/ui/Badge";
 import { Table, TableBody, TableHead, TableRow, Td, Th } from "@/components/ui/Table";
+import { useSession } from "@/contexts/SessionContext";
 
 interface Pedido {
   id: string;
@@ -28,6 +29,7 @@ function formatCOP(value: number) {
 }
 
 export default function ReportesPage() {
+  const { user: sessionUser } = useSession();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -99,6 +101,16 @@ export default function ReportesPage() {
 
     return Array.from(acumulado.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "Sin datos";
   }, [pedidos]);
+
+  if (sessionUser && sessionUser.role !== "ADMIN") {
+    return (
+      <AdminPage eyebrow="Administración" title="Reportes" description="Esta sección solo está disponible para administradores.">
+        <Panel title="Acceso restringido">
+          <div className="p-6 text-sm text-cafe-2">No tienes permiso para ver esta página.</div>
+        </Panel>
+      </AdminPage>
+    );
+  }
 
   return (
     <AdminPage

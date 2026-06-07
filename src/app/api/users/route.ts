@@ -12,7 +12,7 @@ export async function GET(): Promise<NextResponse> {
 
   try {
     const users = await prisma.user.findMany({
-      where: { deleted: false },
+      where: { deleted: false, role: { in: ["ADMIN", "USER"] } },
       select: { id: true, name: true, email: true, role: true, image: true, enabled: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     });
