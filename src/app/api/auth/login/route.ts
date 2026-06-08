@@ -9,7 +9,7 @@ import bcrypt from "bcryptjs";
 const REDIRECT_POR_ROL: Record<string, string> = {
   ADMIN:   "/dashboard",
   USER:    "/dashboard",
-  CLIENTE: "/clientes",   // Los clientes van a su propia página
+  CLIENTE: "/pedido",
 };
 
 export async function POST(request: NextRequest): Promise<NextResponse> {

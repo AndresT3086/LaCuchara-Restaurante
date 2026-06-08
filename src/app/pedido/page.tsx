@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { useSession } from "@/contexts/SessionContext";
@@ -21,8 +21,6 @@ interface Cliente {
   nombre: string;
   email?: string | null;
   telefono?: string | null;
-  direccion?: string | null;
-  puntoReferencia?: string | null;
 }
 
 interface ItemCarrito {
@@ -32,8 +30,44 @@ interface ItemCarrito {
   cantidad: number;
 }
 
+interface PedidoHistorial {
+  id: string;
+  estado: string;
+  total: number;
+  subtotal: number;
+  costoEnvio: number;
+  tipoEntrega: string;
+  createdAt: string;
+  items: { cantidad: number; precio: number; plato: { nombre: string } }[];
+}
+
+type TipoEntrega = "DOMICILIO" | "RECOGIDA";
+
+const ESTADO_CONFIG: Record<string, { label: string; color: string }> = {
+  PENDIENTE:  { label: "Pendiente",   color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  EN_COCINA:  { label: "En cocina",   color: "bg-orange-100 text-orange-800 border-orange-200" },
+  LISTO:      { label: "Listo",       color: "bg-green-100  text-green-800  border-green-200"  },
+  ENTREGADO:  { label: "Entregado",   color: "bg-gray-100   text-gray-600   border-gray-200"   },
+  CANCELADO:  { label: "Cancelado",   color: "bg-red-100    text-red-700    border-red-200"     },
+};
+
 function formatCOP(value: number) {
   return `$${new Intl.NumberFormat("es-CO").format(value)}`;
+}
+
+function formatFecha(iso: string) {
+  return new Date(iso).toLocaleString("es-CO", {
+    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function EstadoBadge({ estado }: { estado: string }) {
+  const cfg = ESTADO_CONFIG[estado] ?? { label: estado, color: "bg-gray-100 text-gray-600 border-gray-200" };
+  return (
+    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cfg.color}`}>
+      {cfg.label}
+    </span>
+  );
 }
 
 export default function PedidoPage() {
@@ -67,6 +101,7 @@ export default function PedidoPage() {
   // Redirigir si no hay sesión
   useEffect(() => {
     if (!loading && !user) router.replace("/auth?mode=login");
+    if (!loading && !user) router.replace("/auth?mode=login");
   }, [loading, router, user]);
 
   // Cargar platos y cliente al montar
@@ -87,7 +122,7 @@ export default function PedidoPage() {
         ]);
         const disponibles: Plato[] = (platosData.platos ?? []).filter((p: Plato) => p.disponible);
         setPlatos(disponibles);
-        setClientes(clientesData.clientes ?? []);
+        setClientes(cd.clientes ?? []);
         setPlatoId(disponibles[0]?.id ?? "");
       } catch {
         setError("No se pudieron cargar los datos del pedido.");
@@ -121,7 +156,7 @@ export default function PedidoPage() {
   );
 
   const totalCarrito = useMemo(
-    () => carrito.reduce((sum, item) => sum + item.precio * item.cantidad, 0),
+    () => carrito.reduce((sum, i) => sum + i.precio * i.cantidad, 0),
     [carrito]
   );
 
@@ -197,20 +232,9 @@ export default function PedidoPage() {
     }
     setError("");
     setCarrito((prev) => {
-      const existente = prev.find((i) => i.platoId === platoSeleccionado.id);
-      if (existente) {
-        return prev.map((i) =>
-          i.platoId === platoSeleccionado.id
-            ? { ...i, cantidad: i.cantidad + cantidadNum }
-            : i
-        );
-      }
-      return [...prev, {
-        platoId:  platoSeleccionado.id,
-        nombre:   platoSeleccionado.nombre,
-        precio:   platoSeleccionado.precio,
-        cantidad: cantidadNum,
-      }];
+      const ex = prev.find((i) => i.platoId === platoSeleccionado.id);
+      if (ex) return prev.map((i) => i.platoId === platoSeleccionado.id ? { ...i, cantidad: i.cantidad + n } : i);
+      return [...prev, { platoId: platoSeleccionado.id, nombre: platoSeleccionado.nombre, precio: platoSeleccionado.precio, cantidad: n }];
     });
     setCantidad("1");
   };
@@ -234,7 +258,6 @@ export default function PedidoPage() {
         return;
       }
     }
-
     setCreating(true);
     setError("");
     setSuccess("");
@@ -257,8 +280,8 @@ export default function PedidoPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        body: JSON.stringify(body),
       });
-
       const data = await res.json();
 
       if (!res.ok) {
@@ -300,9 +323,7 @@ export default function PedidoPage() {
     <main className="min-h-screen bg-maiz text-cafe">
       <header className="border-b border-maiz-3 bg-maiz/90">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="font-heading text-2xl font-extrabold text-rojo-ladrillo">
-            La Cuchara
-          </Link>
+          <Link href="/" className="font-heading text-2xl font-extrabold text-rojo-ladrillo">La Cuchara</Link>
           <span className="text-sm font-semibold text-cafe-2">{user.name}</span>
         </div>
       </header>
@@ -500,6 +521,7 @@ export default function PedidoPage() {
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold leading-tight">{item.nombre}</p>
                     <p className="text-maiz/60">{item.cantidad} × {formatCOP(item.precio)}</p>
+                    <p className="text-maiz/60">{item.cantidad} × {formatCOP(item.precio)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{formatCOP(item.precio * item.cantidad)}</span>
@@ -510,9 +532,8 @@ export default function PedidoPage() {
                     >✕</button>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
 
           {/* Subtotal y envío */}
           {carrito.length > 0 && (
