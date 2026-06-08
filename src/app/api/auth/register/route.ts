@@ -42,7 +42,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         name:     cleanName,
         email:    cleanEmail,
         password: hashedPassword,
-        role:     "USER",
+        role:     "CLIENTE",
       },
       select: { id: true, name: true, email: true, role: true, image: true },
     });
