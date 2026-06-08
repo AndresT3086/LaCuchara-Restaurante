@@ -36,7 +36,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const hashedPassword = await bcrypt.hash(cleanPassword, 10);
 
-    // Crear el usuario del sistema con rol USER (el único rol válido para registro público)
+    // Crear el usuario del sistema con rol CLIENTE (el único rol válido para registro público)
     const user = await prisma.user.create({
       data: {
         name:     cleanName,

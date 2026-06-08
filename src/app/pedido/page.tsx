@@ -25,6 +25,13 @@ interface Cliente {
   puntoReferencia?: string | null;
 }
 
+interface ItemCarrito {
+  platoId: string;
+  nombre: string;
+  precio: number;
+  cantidad: number;
+}
+
 function formatCOP(value: number) {
   return `$${new Intl.NumberFormat("es-CO").format(value)}`;
 }
@@ -33,17 +40,18 @@ export default function PedidoPage() {
   const router = useRouter();
   const { user, loading } = useSession();
 
-  const [platos, setPlatos] = useState<Plato[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [platoId, setPlatoId] = useState("");
-  const [cantidad, setCantidad] = useState("1");
+  const [platos, setPlatos]         = useState<Plato[]>([]);
+  const [clientes, setClientes]     = useState<Cliente[]>([]);
+  const [platoId, setPlatoId]       = useState("");
+  const [cantidad, setCantidad]     = useState("1");
+  const [carrito, setCarrito]       = useState<ItemCarrito[]>([]);
   const [latCliente, setLatCliente] = useState("");
   const [lngCliente, setLngCliente] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [loadingData, setLoadingData] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [creating, setCreating]     = useState(false);
+  const [error, setError]           = useState("");
+  const [success, setSuccess]       = useState("");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -71,7 +79,7 @@ export default function PedidoPage() {
           clientesRes.json(),
         ]);
 
-        const disponibles: Plato[] = (platosData.platos ?? []).filter((plato: Plato) => plato.disponible);
+        const disponibles: Plato[] = (platosData.platos ?? []).filter((p: Plato) => p.disponible);
         setPlatos(disponibles);
         setClientes(clientesData.clientes ?? []);
         setPlatoId(disponibles[0]?.id ?? "");
@@ -86,30 +94,60 @@ export default function PedidoPage() {
   }, [user]);
 
   const clienteActual = useMemo(
-    () => clientes.find((cliente) => cliente.email?.toLowerCase() === user?.email.toLowerCase()) ?? null,
+    () => clientes.find((c) => c.email?.toLowerCase() === user?.email.toLowerCase()) ?? null,
     [clientes, user?.email]
   );
 
   const platoSeleccionado = useMemo(
-    () => platos.find((plato) => plato.id === platoId) ?? null,
+    () => platos.find((p) => p.id === platoId) ?? null,
     [platoId, platos]
   );
 
-  const subtotal = platoSeleccionado ? platoSeleccionado.precio * Number(cantidad || 0) : 0;
+  const totalCarrito = useMemo(
+    () => carrito.reduce((sum, item) => sum + item.precio * item.cantidad, 0),
+    [carrito]
+  );
 
-  const handleConfirmar = async () => {
-    if (!clienteActual || !platoSeleccionado) return;
+  const handleAgregar = () => {
+    if (!platoSeleccionado) return;
 
-    const cantidadNumber = Number(cantidad);
-    const lat = Number(latCliente);
-    const lng = Number(lngCliente);
-
-    if (!cantidad || Number.isNaN(cantidadNumber) || cantidadNumber <= 0) {
+    const cantidadNum = Number(cantidad);
+    if (!cantidad || Number.isNaN(cantidadNum) || cantidadNum <= 0) {
       setError("Ingresa una cantidad válida.");
       return;
     }
 
-    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+    setError("");
+    setCarrito((prev) => {
+      const existente = prev.find((i) => i.platoId === platoSeleccionado.id);
+      if (existente) {
+        return prev.map((i) =>
+          i.platoId === platoSeleccionado.id
+            ? { ...i, cantidad: i.cantidad + cantidadNum }
+            : i
+        );
+      }
+      return [...prev, {
+        platoId:  platoSeleccionado.id,
+        nombre:   platoSeleccionado.nombre,
+        precio:   platoSeleccionado.precio,
+        cantidad: cantidadNum,
+      }];
+    });
+    setCantidad("1");
+  };
+
+  const handleEliminarItem = (platoId: string) => {
+    setCarrito((prev) => prev.filter((i) => i.platoId !== platoId));
+  };
+
+  const handleConfirmar = async () => {
+    if (!clienteActual || carrito.length === 0) return;
+
+    const lat = Number(latCliente);
+    const lng = Number(lngCliente);
+
+    if (Number.isNaN(lat) || Number.isNaN(lng) || !latCliente || !lngCliente) {
       setError("Ingresa coordenadas válidas para calcular el domicilio.");
       return;
     }
@@ -127,7 +165,7 @@ export default function PedidoPage() {
           tipoEntrega:  "DOMICILIO",
           latCliente:   lat,
           lngCliente:   lng,
-          items:        [{ platoId: platoSeleccionado.id, cantidad: cantidadNumber }],
+          items:        carrito.map((i) => ({ platoId: i.platoId, cantidad: i.cantidad })),
           observaciones: observaciones.trim() || null,
         }),
       });
@@ -140,8 +178,10 @@ export default function PedidoPage() {
       }
 
       setSuccess(`Pedido creado. ${data.entrega?.mensaje ?? ""}`);
-      setCantidad("1");
+      setCarrito([]);
       setObservaciones("");
+      setLatCliente("");
+      setLngCliente("");
     } catch {
       setError("Error de conexión al crear el pedido.");
     } finally {
@@ -171,13 +211,14 @@ export default function PedidoPage() {
       </header>
 
       <section className="mx-auto grid max-w-5xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_340px]">
+        {/* Panel izquierdo: selector de platos */}
         <div className="rounded-2xl border border-maiz-3 bg-elevated p-5 shadow-warm-md sm:p-6">
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-achiote-dark">
             Pedido cliente
           </p>
           <h1 className="font-heading text-4xl font-extrabold text-cafe">Arma tu pedido</h1>
           <p className="mt-2 text-sm leading-relaxed text-cafe-2">
-            Elige un plato disponible. El precio y la disponibilidad vienen de la API de platos.
+            Agrega los platos que quieras al carrito y confirma al final.
           </p>
 
           {error && (
@@ -188,6 +229,7 @@ export default function PedidoPage() {
           )}
 
           <div className="mt-7 space-y-6">
+            {/* Selector de plato */}
             <section>
               <h2 className="mb-3 font-heading text-xl font-extrabold">Plato</h2>
               {loadingData ? (
@@ -195,12 +237,12 @@ export default function PedidoPage() {
               ) : (
                 <select
                   value={platoId}
-                  onChange={(event) => setPlatoId(event.target.value)}
+                  onChange={(e) => setPlatoId(e.target.value)}
                   className="w-full rounded-md border border-maiz-3 bg-maiz px-3 py-2 text-sm text-cafe outline-none focus:border-rojo-ladrillo focus:ring-2 focus:ring-rojo-ladrillo/15"
                 >
                   {platos.map((plato) => (
                     <option key={plato.id} value={plato.id}>
-                      {plato.nombre} - {formatCOP(plato.precio)}
+                      {plato.nombre} — {formatCOP(plato.precio)}
                     </option>
                   ))}
                 </select>
@@ -210,25 +252,40 @@ export default function PedidoPage() {
               )}
             </section>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Input
-                label="Cantidad"
-                type="number"
-                min="1"
-                value={cantidad}
-                onChange={(event) => setCantidad(event.target.value)}
-              />
+            {/* Cantidad + botón agregar */}
+            <div className="flex items-end gap-3">
+              <div className="w-32">
+                <Input
+                  label="Cantidad"
+                  type="number"
+                  min="1"
+                  value={cantidad}
+                  onChange={(e) => setCantidad(e.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleAgregar}
+                disabled={loadingData || !platoSeleccionado}
+                className="flex-1"
+              >
+                Agregar al carrito
+              </Button>
+            </div>
+
+            {/* Coordenadas y observaciones */}
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 label="Latitud"
                 placeholder="6.15155"
                 value={latCliente}
-                onChange={(event) => setLatCliente(event.target.value)}
+                onChange={(e) => setLatCliente(e.target.value)}
               />
               <Input
                 label="Longitud"
                 placeholder="-75.61657"
                 value={lngCliente}
-                onChange={(event) => setLngCliente(event.target.value)}
+                onChange={(e) => setLngCliente(e.target.value)}
               />
             </div>
 
@@ -236,31 +293,66 @@ export default function PedidoPage() {
               label="Observaciones"
               placeholder="Indicaciones para el pedido"
               value={observaciones}
-              onChange={(event) => setObservaciones(event.target.value)}
+              onChange={(e) => setObservaciones(e.target.value)}
               maxLength={200}
             />
           </div>
         </div>
 
+        {/* Panel derecho: carrito */}
         <aside className="h-fit rounded-2xl border border-maiz-3 bg-cafe p-5 text-maiz shadow-warm-md">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-achiote">Resumen</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-achiote">Carrito</p>
           <h2 className="mt-2 font-heading text-2xl font-extrabold">Tu pedido</h2>
-          <div className="mt-5 space-y-3 text-sm">
-            <SummaryRow label="Cliente" value={clienteActual?.nombre ?? "Sin cliente asociado"} />
-            <SummaryRow label="Plato" value={platoSeleccionado?.nombre ?? "Sin plato"} />
-            <SummaryRow label="Cantidad" value={cantidad || "0"} />
+
+          <p className="mt-3 text-sm text-maiz/60">{clienteActual?.nombre ?? "Sin cliente asociado"}</p>
+
+          {/* Ítems del carrito */}
+          <div className="mt-4 space-y-2">
+            {carrito.length === 0 ? (
+              <p className="text-sm text-maiz/50">Aún no has agregado platos.</p>
+            ) : (
+              carrito.map((item) => (
+                <div key={item.platoId} className="flex items-start justify-between gap-2 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold leading-tight">{item.nombre}</p>
+                    <p className="text-maiz/60">
+                      {item.cantidad} × {formatCOP(item.precio)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{formatCOP(item.precio * item.cantidad)}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleEliminarItem(item.platoId)}
+                      className="text-maiz/40 hover:text-aji transition-colors"
+                      aria-label={`Quitar ${item.nombre}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-          <div className="mt-5 border-t border-maiz/15 pt-4">
-            <SummaryRow label="Subtotal" value={formatCOP(subtotal)} />
-            <p className="mt-2 text-xs leading-relaxed text-maiz/60">
-              El costo de domicilio lo calcula el backend al confirmar el pedido.
-            </p>
-          </div>
+
+          {/* Total */}
+          {carrito.length > 0 && (
+            <div className="mt-4 border-t border-maiz/15 pt-4">
+              <div className="flex justify-between text-sm font-semibold">
+                <span className="text-maiz/60">Subtotal</span>
+                <span>{formatCOP(totalCarrito)}</span>
+              </div>
+              <p className="mt-1 text-xs text-maiz/50">
+                El costo de domicilio lo calcula el backend al confirmar.
+              </p>
+            </div>
+          )}
+
           <Button
             type="button"
             className="mt-6 w-full"
             loading={creating}
-            disabled={!clienteActual || !platoSeleccionado || loadingData}
+            disabled={!clienteActual || carrito.length === 0 || loadingData}
             onClick={handleConfirmar}
           >
             Confirmar pedido
@@ -268,14 +360,5 @@ export default function PedidoPage() {
         </aside>
       </section>
     </main>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <span className="text-maiz/60">{label}</span>
-      <span className="text-right font-semibold">{value}</span>
-    </div>
   );
 }
