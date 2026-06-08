@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "@/contexts/SessionContext";
 
 type Mode = "login" | "register";
 
@@ -13,6 +14,7 @@ export default function AuthPage({
 }) {
   const mode: Mode = searchParams?.mode === "register" ? "register" : "login";
   const router = useRouter();
+  const { refresh } = useSession();
 
   const [name, setName]         = useState("");
   const [phone, setPhone]       = useState("");
@@ -49,6 +51,7 @@ export default function AuthPage({
         return;
       }
 
+      await refresh();
       redirectByRole(data.user?.role);
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -76,6 +79,7 @@ export default function AuthPage({
         return;
       }
 
+      await refresh();
       redirectByRole(data.user?.role);
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
