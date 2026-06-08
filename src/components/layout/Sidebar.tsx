@@ -9,6 +9,7 @@ interface NavItem {
   label: string;
   section: "operacion" | "administracion";
   soloAdmin?: boolean;
+  soloPersonal?: boolean; // Solo ADMIN y USER (empleados), no CLIENTE
   icon: React.ReactNode;
 }
 
@@ -30,11 +31,11 @@ const navItems: NavItem[] = [
     icon: <svg {...iconProps}><path d="M3 10a6 6 0 1112 0H3z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /><path d="M1 10h16M9 4V2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>,
   },
   {
-    href: "/inventario", label: "Inventario", section: "administracion",
+    href: "/inventario", label: "Inventario", section: "administracion", soloPersonal: true,
     icon: <svg {...iconProps}><rect x="2" y="2" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.6" /><rect x="10" y="2" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.6" /><rect x="2" y="10" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.6" /><rect x="10" y="10" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.6" /></svg>,
   },
   {
-    href: "/transacciones", label: "Transacciones", section: "administracion",
+    href: "/transacciones", label: "Transacciones", section: "administracion", soloPersonal: true,
     icon: <svg {...iconProps}><path d="M3 5h10M10 2l3 3-3 3M15 13H5M8 10l-3 3 3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>,
   },
   {
@@ -52,27 +53,41 @@ const sections = [
   { key: "administracion", label: "Administración" },
 ] as const;
 
+// Etiquetas y colores por rol
+const ROL_CONFIG = {
+  ADMIN:   { label: "Administrador", badge: "bg-achiote text-cafe",    descripcion: "Administrador" },
+  USER:    { label: "Empleado",      badge: "bg-maiz/20 text-maiz",    descripcion: "Empleado"      },
+  CLIENTE: { label: "Cliente",       badge: "bg-hoja/80 text-white",   descripcion: "Cliente"       },
+};
+
 export default function Sidebar() {
-  const pathname       = usePathname();
-  const router         = useRouter();
+  const pathname = usePathname();
+  const router   = useRouter();
   const { user, logout, loading } = useSession();
 
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin    = user?.role === "ADMIN";
+  const isPersonal = user?.role === "ADMIN" || user?.role === "USER"; // Empleados del restaurante
+  const isCliente  = user?.role === "CLIENTE";
 
-  // Filtra ítems según el rol real del usuario
-  const visibleItems = navItems.filter((item) =>
-    item.soloAdmin ? isAdmin : true
-  );
+  // Filtra ítems según el rol
+  const visibleItems = navItems.filter((item) => {
+    if (item.soloAdmin   && !isAdmin)    return false;
+    if (item.soloPersonal && !isPersonal) return false;
+    // Los clientes solo ven Dashboard y Pedidos
+    if (isCliente && item.section === "administracion") return false;
+    return true;
+  });
 
   const handleLogout = async () => {
     await logout();
     router.push("/auth");
   };
 
-  // Iniciales del nombre para el avatar
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "?";
+
+  const rolConfig = user?.role ? ROL_CONFIG[user.role] : ROL_CONFIG.USER;
 
   return (
     <aside className="relative flex min-h-screen w-64 flex-shrink-0 flex-col border-r border-black/20 bg-[#2A1810] text-maiz max-md:min-h-0 max-md:w-full max-md:border-b max-md:border-r-0">
@@ -88,11 +103,13 @@ export default function Sidebar() {
         </Link>
         <Link href="/dashboard" className="min-w-0">
           <p className="font-heading text-[22px] font-extrabold leading-none tracking-normal text-maiz">La Cuchara</p>
-          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.22em] text-[#A89478]">Cocina oculta</p>
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.22em] text-[#A89478]">
+            {isCliente ? "Tu pedido" : "Cocina oculta"}
+          </p>
         </Link>
       </div>
 
-      {/* Info del usuario — datos reales de la sesión */}
+      {/* Info del usuario */}
       <div className="m-4 flex items-center gap-3 rounded-lg border border-maiz/10 bg-maiz/[0.04] p-3 max-md:hidden">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-achiote to-rojo-ladrillo font-heading text-sm font-extrabold text-maiz">
           {loading ? "…" : initials}
@@ -102,10 +119,10 @@ export default function Sidebar() {
             {loading ? "Cargando…" : (user?.name ?? "Usuario")}
           </p>
           <p className="text-[11px] text-[#A89478]">
-            {loading ? "" : (isAdmin ? "Administrador" : "Empleado")}
+            {loading ? "" : rolConfig.descripcion}
           </p>
-          <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] ${isAdmin ? "bg-achiote text-cafe" : "bg-maiz/20 text-maiz"}`}>
-            {loading ? "" : (isAdmin ? "ADMIN" : "USER")}
+          <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] ${rolConfig.badge}`}>
+            {loading ? "" : user?.role}
           </span>
         </div>
       </div>

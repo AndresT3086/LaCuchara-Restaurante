@@ -11,9 +11,9 @@ datasource db {
 }
 
 enum Enum_Role {
-  ADMIN
-  USER
-  CLIENTE
+  ADMIN    // Acceso total
+  USER     // Empleado operativo
+  CLIENTE  // Cliente que hace pedidos desde el front
 }
 
 enum Enum_EstadoPedido {
