@@ -305,7 +305,7 @@ export default function PedidoPage() {
               </div>
 
               <p className="mt-1.5 text-xs text-cafe-3">
-                Escribe la dirección completa incluyendo el municipio. Ej: Cra 34A #75 Sur 50, Sabaneta
+                Escribe la dirección completa incluyendo el municipio para mejorar la precisión. Ej: Cra 34A #75 Sur 50, Sabaneta
               </p>
 
               {/* Verificada con éxito */}
