@@ -3,12 +3,13 @@ import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const { name, email, password, phone } = await request.json();
+  const { name, email, password, phone, direccion } = await request.json();
 
-  const cleanName     = String(name     ?? "").trim();
-  const cleanEmail    = String(email    ?? "").toLowerCase().trim();
-  const cleanPassword = String(password ?? "");
-  const cleanPhone    = phone ? String(phone).trim() : null;
+  const cleanName      = String(name      ?? "").trim();
+  const cleanEmail     = String(email     ?? "").toLowerCase().trim();
+  const cleanPassword  = String(password  ?? "");
+  const cleanPhone     = phone     ? String(phone).trim()     : null;
+  const cleanDireccion = direccion ? String(direccion).trim() : null;
 
   if (!cleanName || !cleanEmail || !cleanPassword) {
     return NextResponse.json(
@@ -50,9 +51,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Crear también el registro de cliente vinculado a este usuario
     await prisma.cliente.create({
       data: {
-        nombre:   cleanName,
-        email:    cleanEmail,
-        telefono: cleanPhone,
+        nombre:    cleanName,
+        email:     cleanEmail,
+        telefono:  cleanPhone,
+        direccion: cleanDireccion,
       },
     });
 

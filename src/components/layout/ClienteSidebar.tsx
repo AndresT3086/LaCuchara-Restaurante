@@ -24,6 +24,16 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    href: "/perfil",
+    label: "Mi perfil",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <circle cx="9" cy="6" r="3" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M2 16c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    ),
+  },
 ];
 
 export default function ClienteSidebar() {

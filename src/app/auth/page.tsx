@@ -16,10 +16,11 @@ export default function AuthPage({
   const router = useRouter();
   const { refresh } = useSession();
 
-  const [name, setName]         = useState("");
-  const [phone, setPhone]       = useState("");
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName]           = useState("");
+  const [phone, setPhone]         = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [email, setEmail]         = useState("");
+  const [password, setPassword]   = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
 
@@ -68,7 +69,7 @@ export default function AuthPage({
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, email, password }),
+        body: JSON.stringify({ name, phone, direccion, email, password }),
       });
 
       const data = await res.json();
@@ -227,6 +228,18 @@ export default function AuthPage({
                     onChange={(e) => setPhone(e.target.value)}
                     disabled={loading}
                   />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-semibold text-cafe">Dirección</span>
+                  <input
+                    className="mt-1 w-full rounded-md border border-maiz-3 bg-maiz px-3 py-2.5 text-sm outline-none focus:border-rojo-ladrillo focus:ring-2 focus:ring-rojo-ladrillo/15"
+                    placeholder="Ej. Cra 34A #75 Sur 50, Sabaneta"
+                    value={direccion}
+                    onChange={(e) => setDireccion(e.target.value)}
+                    disabled={loading}
+                  />
+                  <span className="mt-1 block text-xs text-cafe-3">Para domicilios — la puedes cambiar desde tu perfil</span>
                 </label>
 
                 <label className="block">

@@ -18,6 +18,7 @@ interface Cliente {
   id: string;
   nombre: string;
   email?: string | null;
+  direccion?: string | null;
 }
 
 interface ItemCarrito {
@@ -83,8 +84,13 @@ export default function PedidoPage() {
 
   useEffect(() => { cargarDatos(); }, [cargarDatos]);
 
+  const clienteActual = useMemo(
+    () => clientes.find((c) => c.email?.toLowerCase() === user?.email?.toLowerCase()) ?? null,
+    [clientes, user?.email]
+  );
+
   useEffect(() => {
-    setDireccionTexto("");
+    setDireccionTexto(tipoEntrega === "DOMICILIO" && clienteActual?.direccion ? clienteActual.direccion : "");
     setDireccionVerificada("");
     setCostoEnvio(null);
     setMensajeEnvio("");
@@ -92,12 +98,7 @@ export default function PedidoPage() {
     setLngCliente(null);
     setSinCobertura(false);
     setError("");
-  }, [tipoEntrega]);
-
-  const clienteActual = useMemo(
-    () => clientes.find((c) => c.email?.toLowerCase() === user?.email?.toLowerCase()) ?? null,
-    [clientes, user?.email]
-  );
+  }, [tipoEntrega, clienteActual]);
 
   const platoSeleccionado = useMemo(
     () => platos.find((p) => p.id === platoId) ?? null,
