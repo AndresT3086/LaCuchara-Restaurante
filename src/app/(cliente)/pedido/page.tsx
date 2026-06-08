@@ -130,6 +130,7 @@ export default function PedidoPage() {
         body: JSON.stringify({ direccion: direccionTexto }),
       });
       const geoData = await geoRes.json();
+      console.log("Respuesta geocodificar:", geoData);
 
       if (!geoRes.ok || !geoData.encontrado) {
         setError(geoData.error || "No encontramos esa dirección.");
