@@ -140,7 +140,7 @@ export default function PedidoPage() {
       setLatCliente(geoData.lat);
       setLngCliente(geoData.lng);
 
-      const envioRes  = await fetch("/api/domicilio/calcular", {
+      const envioRes  = await fetch("/api/domicilio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lat: geoData.lat, lng: geoData.lng }),
