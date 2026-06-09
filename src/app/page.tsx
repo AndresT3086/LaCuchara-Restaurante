@@ -16,7 +16,7 @@ const PASOS_PEDIDO = [
   },
   {
     titulo: "Paga como prefieras",
-    detalle: "Puedes pagar contra entrega o usar tarjeta en línea cuando el pedido esté listo para confirmarse.",
+    detalle: "Elige tu método: efectivo al recibir, Nequi o transferencia bancaria. Lo registramos al confirmar el pedido.",
     inicial: "3",
   },
 ];
@@ -289,7 +289,7 @@ export default function LandingPage() {
           <div>
             <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-achiote">Servicio</h3>
             <p className="text-sm text-maiz/65">Lunes a sábado</p>
-            <p className="mt-1 font-heading text-lg font-bold">11:30 a.m. - 3:30 p.m.</p>
+            <p className="mt-1 font-heading text-lg font-bold">11:00 a.m. – 7:00 p.m.</p>
             <p className="mt-3 text-sm text-maiz/65">Pedidos para recoger y domicilio.</p>
           </div>
         </div>

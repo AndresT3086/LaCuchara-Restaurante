@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
+import Dialog from "@/components/ui/Dialog";
 import Input from "@/components/ui/Input";
 import { useSession } from "@/contexts/SessionContext";
 
@@ -35,6 +36,14 @@ interface PedidoConfirmado {
 }
 
 type TipoEntrega = "DOMICILIO" | "RECOGIDA";
+type MetodoPago = "EFECTIVO" | "TARJETA_CREDITO" | "TARJETA_DEBITO" | "TRANSFERENCIA";
+
+const METODOS_PAGO: { value: MetodoPago; label: string; desc: string }[] = [
+  { value: "EFECTIVO",        label: "Efectivo",          desc: "Pagas al recibir"           },
+  { value: "TARJETA_CREDITO", label: "Tarjeta crédito",   desc: "Datafono en entrega"        },
+  { value: "TARJETA_DEBITO",  label: "Tarjeta débito",    desc: "Datafono en entrega"        },
+  { value: "TRANSFERENCIA",   label: "Transferencia",     desc: "Nequi o Bancolombia"        },
+];
 
 function formatCOP(v: number) {
   return `$${new Intl.NumberFormat("es-CO").format(v)}`;
@@ -54,6 +63,11 @@ export default function PedidoPage() {
   const [creating, setCreating]           = useState(false);
   const [error, setError]                 = useState("");
   const [confirmado, setConfirmado]       = useState<PedidoConfirmado | null>(null);
+  const [showPagoModal, setShowPagoModal] = useState(false);
+  const [metodoPago, setMetodoPago]       = useState<MetodoPago>("EFECTIVO");
+  const [pagando, setPagando]             = useState(false);
+  const [pagoError, setPagoError]         = useState("");
+  const [pagoOk, setPagoOk]              = useState(false);
 
   // Dirección
   const [direccionTexto, setDireccionTexto]           = useState("");
@@ -219,10 +233,36 @@ export default function PedidoPage() {
       setObservaciones("");
       setDireccionTexto("");
       limpiarDireccion();
+      setShowPagoModal(true);
+      setMetodoPago("EFECTIVO");
+      setPagoError("");
+      setPagoOk(false);
     } catch {
       setError("Error de conexión al crear el pedido.");
     } finally {
       setCreating(false);
+    }
+  };
+
+  // ── Registrar pago ────────────────────────────────────────────────────────
+  const handlePagar = async () => {
+    if (!confirmado) return;
+    setPagando(true);
+    setPagoError("");
+    try {
+      const res = await fetch("/api/pagos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pedidoId: confirmado.id, monto: confirmado.total, metodo: metodoPago }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setPagoError(data.error || "No se pudo registrar el pago."); return; }
+      setPagoOk(true);
+      window.setTimeout(() => setShowPagoModal(false), 1500);
+    } catch {
+      setPagoError("Error de conexión al registrar el pago.");
+    } finally {
+      setPagando(false);
     }
   };
 
@@ -431,6 +471,60 @@ export default function PedidoPage() {
           )}
         </aside>
       </div>
+
+      {/* Modal de pago */}
+      <Dialog
+        open={showPagoModal}
+        onClose={() => { if (!pagando && !pagoOk) setShowPagoModal(false); }}
+        title="¿Cómo vas a pagar?"
+        confirmLabel={pagoOk ? "Listo" : "Confirmar pago"}
+        cancelLabel="Ahora no"
+        onConfirm={pagoOk ? () => setShowPagoModal(false) : handlePagar}
+        loading={pagando}
+      >
+        <div className="space-y-4">
+          {confirmado && !pagoOk && (
+            <div className="rounded-lg border border-maiz-3 bg-maiz/50 px-4 py-3 text-sm">
+              <p className="text-xs text-cafe-3">Total a pagar</p>
+              <p className="mt-0.5 font-heading text-2xl font-extrabold text-cafe">{formatCOP(confirmado.total)}</p>
+            </div>
+          )}
+
+          {pagoOk ? (
+            <div className="rounded-lg border border-hoja/30 bg-hoja/10 px-4 py-4 text-center">
+              <p className="font-semibold text-hoja">Pago registrado</p>
+              <p className="mt-1 text-sm text-cafe-2">Tu pedido está confirmado y en proceso.</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-cafe">Método de pago</p>
+              <div className="grid grid-cols-2 gap-2">
+                {METODOS_PAGO.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setMetodoPago(m.value)}
+                    disabled={pagando}
+                    className={[
+                      "rounded-xl border-2 px-3 py-3 text-left transition-colors disabled:opacity-50",
+                      metodoPago === m.value
+                        ? "border-rojo-ladrillo bg-rojo-ladrillo/5"
+                        : "border-maiz-3 hover:border-maiz-4",
+                    ].join(" ")}
+                  >
+                    <p className="text-sm font-bold text-cafe">{m.label}</p>
+                    <p className="mt-0.5 text-xs text-cafe-3">{m.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {pagoError && (
+            <div className="rounded-lg border border-aji/30 bg-aji/10 px-3 py-2 text-sm text-aji">{pagoError}</div>
+          )}
+        </div>
+      </Dialog>
     </div>
   );
 }
