@@ -1,6 +1,7 @@
 # La Cuchara — Sistema de Gestión de Restaurante
 
 Sistema web de administración para el restaurante **La Cuchara**, especializado en comida típica colombiana. Desarrollado con Next.js 14, React, TailwindCSS y Supabase.
+[Ver aplicación desplegada](https://la-cuchara-restaurante.vercel.app/)
 
 ## Integrantes del Equipo
 
@@ -231,8 +232,7 @@ Cada movimiento de entrada o salida actualiza el saldo del maestro en una **tran
  
 1. Conecta el repositorio en [vercel.com](https://vercel.com)
 2. En **Settings → Environment Variables** agrega las variables del `.env`
-3. El nombre del proyecto debe ser `nombreEquipoRestaurante` para que la URL quede `nombreEquipoRestaurante.vercel.app`
-4. Cada push a `main` genera un deploy automático
+3. Cada push a `main` genera un deploy automático
 ---
  
 *Proyecto académico — Ingeniería Web, Universidad de Antioquia, 2026*
