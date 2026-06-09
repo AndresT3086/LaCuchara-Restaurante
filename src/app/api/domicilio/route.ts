@@ -74,13 +74,15 @@ function calcularCostoEnvio(distanciaKm: number): {
 
   if (dist <= COBERTURA_MAXIMA_KM) {
     // Entre 2 y 5 km: $1.000 por km (redondeado al km entero hacia arriba)
-    const kmCobrados = Math.ceil(dist);
-    const costo = kmCobrados * TARIFA_POR_KM;
+
+    const kmExtras = Math.ceil(dist - TARIFA_PLANA_KM);
+    const costo = TARIFA_PLANA_VALOR + kmExtras * TARIFA_POR_KM;
+
     return {
       tiene_cobertura: true,
       costo,
       distancia_km:    dist,
-      mensaje:         `Envío a ${dist} km — ${kmCobrados} km cobrados`,
+      mensaje:         `Envío a ${dist} km — ${kmExtras} km extra`,
       rango:           `${TARIFA_PLANA_KM} - ${COBERTURA_MAXIMA_KM} km`,
     };
   }
