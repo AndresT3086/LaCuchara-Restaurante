@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+interface Pago {
+  id: string;
+  metodo: "EFECTIVO" | "TARJETA_CREDITO" | "TARJETA_DEBITO" | "TRANSFERENCIA";
+  monto: number;
+}
+
 interface Pedido {
   id: string;
   estado: string;
@@ -12,7 +18,15 @@ interface Pedido {
   observaciones?: string | null;
   createdAt: string;
   items: { cantidad: number; precio: number; plato: { nombre: string } }[];
+  pagos: Pago[];
 }
+
+const METODO_LABEL: Record<string, string> = {
+  EFECTIVO:        "Efectivo",
+  TARJETA_CREDITO: "Tarjeta crédito",
+  TARJETA_DEBITO:  "Tarjeta débito",
+  TRANSFERENCIA:   "Transferencia",
+};
 
 const ESTADO_CONFIG: Record<string, { label: string; color: string }> = {
   PENDIENTE: { label: "Pendiente",  color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
@@ -141,6 +155,18 @@ export default function HistorialPage() {
                     <span>{formatCOP(pedido.total)}</span>
                   </div>
                 </div>
+
+                {pedido.pagos.length > 0 && (
+                  <div className="mt-3 flex items-center gap-2 rounded-lg border border-hoja/20 bg-hoja/8 px-3 py-2 text-xs text-hoja">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <rect x="1" y="3" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+                      <path d="M1 5.5h10" stroke="currentColor" strokeWidth="1.2"/>
+                    </svg>
+                    <span className="font-semibold">
+                      Pago: {METODO_LABEL[pedido.pagos[0].metodo] ?? pedido.pagos[0].metodo}
+                    </span>
+                  </div>
+                )}
 
                 {pedido.observaciones && (
                   <p className="mt-3 rounded-lg bg-maiz-2 px-3 py-2 text-xs text-cafe-2">
