@@ -78,9 +78,15 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
 }
 
 function calcularEnvio(distKm: number): { costo: number; cobertura: boolean } {
-  if (distKm <= TARIFA_PLANA_KM)     return { costo: TARIFA_PLANA_VALOR,                cobertura: true  };
-  if (distKm <= COBERTURA_MAXIMA_KM) return { costo: Math.ceil(distKm) * TARIFA_POR_KM, cobertura: true  };
-  return                                     { costo: 0,                                 cobertura: false };
+  if (distKm <= TARIFA_PLANA_KM) {
+    return { costo: TARIFA_PLANA_VALOR, cobertura: true };
+  }
+  if (distKm <= COBERTURA_MAXIMA_KM) {
+    // $7.000 base + $1.000 por cada km que supere los 2 km iniciales
+    const kmExtras = Math.ceil(distKm - TARIFA_PLANA_KM);
+    return { costo: TARIFA_PLANA_VALOR + kmExtras * TARIFA_POR_KM, cobertura: true };
+  }
+  return { costo: 0, cobertura: false };
 }
 
 // ─── GET ──────────────────────────────────────────────────────────────────────

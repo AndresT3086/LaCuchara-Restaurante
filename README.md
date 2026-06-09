@@ -46,7 +46,7 @@ Sistema web de administración para el restaurante **La Cuchara**, especializado
 | Distancia desde el restaurante | Costo |
 |-------------------------------|-------|
 | 0 – 2 km | $7.000 COP (tarifa plana) |
-| 2 – 5 km | $1.000 COP por kilómetro |
+| 2 – 5 km | $1.000 COP adicionales por kilómetro |
 | Más de 5 km | Sin cobertura — no se genera el pedido |
  
 > La distancia se calcula usando la fórmula Haversine sobre las coordenadas reales del cliente, obtenidas mediante la API de Google Maps Geocoding.
